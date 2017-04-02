@@ -3,17 +3,21 @@
 
 Definitions.
 
+SP = [\s\t]
+COMMENT = #[^\n]*
+
 HEX = [0-9a-fA-F]
 HEX4 = {HEX}{HEX}{HEX}{HEX}
 HEX8 = {HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}
-SP = [\s\t]
-
-COMMENT = #[^\n]*
+CHAR = [^\\"\x00-\x1f]
+ESC_CHAR = \\[btnfr"\\\\]
+U4 = \\u{HEX4}
+U8 = \\U{HEX8}
 
 BARE_KEY = [a-zA-Z0-9_-]+
-BASIC_STRING = "([^\\\"\x00-\x1f]|\\[btnfr\"\\\\]|\\u{HEX4}|\\U{HEX8})*"
 LITERAL_STRING = '[^\']*'
-
+BASIC_STRING = "({CHAR}|{ESC_CHAR}|{U4}|{U8})*"
+BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|{ESC_CHAR}|{U4}|{U8}))*"""
 LITERAL_STRING_ML = '''('?'?[^'])*'''
 
 INTEGER = [+-]?([0-9]|[1-9](_?[0-9])+)
@@ -67,8 +71,7 @@ false : {token, {bool, TokenLine, false}}.
 
 {BASIC_STRING}   : {token, {basic_string, TokenLine, basic_string(TokenChars)}}.
 {LITERAL_STRING} : {token, {literal_string, TokenLine, literal_string(TokenChars)}}.
-% TODO: multiline strings
-%{BASIC_STRING_ML}   : {token, {basic_string_ml, TokenLine, TokenChars}}.
+{BASIC_STRING_ML}   : {token, {basic_string_ml, TokenLine, basic_string_ml(TokenChars)}}.
 {LITERAL_STRING_ML} : {token, {literal_string_ml, TokenLine, literal_string_ml(TokenChars)}}.
 
 {SP}+     : skip_token.
@@ -128,18 +131,18 @@ local_time(String) ->
       {list_to_integer(HH), list_to_integer(MM), list_to_integer(S)}
   end.
 
-basic_string(String) ->
-  esc_codes(string:substr(String, 2, length(String) - 2)).
-
 literal_string(String) ->
   string:substr(String, 2, length(String) - 2).
 
 literal_string_ml(String) ->
   case string:substr(String, 4, length(String) - 6) of
-    "\n" ++ Result -> Result;
     "\r\n" ++ Result -> Result;
+    "\n" ++ Result -> Result;
     Result -> Result
   end.
+
+basic_string(String) ->
+  esc_codes(string:substr(String, 2, length(String) - 2)).
 
 esc_codes("") -> "";
 esc_codes("\\b"  ++ Rest) -> [$\b | esc_codes(Rest)];
@@ -155,6 +158,15 @@ esc_codes("\\U"  ++ [C1, C2, C3, C4, C5, C6, C7, C8 | Rest]) ->
   [u([C8, C7, C6, C5, C4, C3, C2, C1]) | esc_codes(Rest)];
 esc_codes([C | Rest]) ->
   [C | esc_codes(Rest)].
+
+basic_string_ml(String) ->
+  % TODO: stripping "\" + whitespace at the end of lines (remember to extend
+  % the regexp for multiline basic strings)
+  case string:substr(String, 4, length(String) - 6) of
+    "\r\n" ++ Result -> esc_codes(Result);
+    "\n" ++ Result -> esc_codes(Result);
+    Result -> esc_codes(Result)
+  end.
 
 u([]) -> 0;
 u([C | Rest]) when C >= $0 andalso C =< $9 ->      (C - $0) + 16 * u(Rest);

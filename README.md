@@ -11,7 +11,6 @@ Known limitations
   truncated)
 * Nested arrays formatting requires whitespaces around `"["` and `"]"`
   characters to work properly
-* Multiline strings (basic and literal) are not supported yet
 
 Contact and License
 -------------------
