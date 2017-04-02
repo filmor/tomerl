@@ -17,7 +17,7 @@ U8 = \\U{HEX8}
 BARE_KEY = [a-zA-Z0-9_-]+
 LITERAL_STRING = '[^\']*'
 BASIC_STRING = "({CHAR}|{ESC_CHAR}|{U4}|{U8})*"
-BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|{ESC_CHAR}|{U4}|{U8}))*"""
+BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""
 LITERAL_STRING_ML = '''('?'?[^'])*'''
 
 INTEGER = [+-]?([0-9]|[1-9](_?[0-9])+)
@@ -144,6 +144,13 @@ literal_string_ml(String) ->
 basic_string(String) ->
   esc_codes(string:substr(String, 2, length(String) - 2)).
 
+basic_string_ml(String) ->
+  case string:substr(String, 4, length(String) - 6) of
+    "\r\n" ++ Result -> esc_codes(Result);
+    "\n" ++ Result -> esc_codes(Result);
+    Result -> esc_codes(Result)
+  end.
+
 esc_codes("") -> "";
 esc_codes("\\b"  ++ Rest) -> [$\b | esc_codes(Rest)];
 esc_codes("\\t"  ++ Rest) -> [$\t | esc_codes(Rest)];
@@ -156,17 +163,19 @@ esc_codes("\\u"  ++ [C1, C2, C3, C4 | Rest]) ->
   [u([C4, C3, C2, C1]) | esc_codes(Rest)];
 esc_codes("\\U"  ++ [C1, C2, C3, C4, C5, C6, C7, C8 | Rest]) ->
   [u([C8, C7, C6, C5, C4, C3, C2, C1]) | esc_codes(Rest)];
+esc_codes("\\" ++ Rest) ->
+  % XXX: "dangling" backslash can only occur in multiline basic strings
+  % (regexps are designed so), so this clause will never be called for basic
+  % string
+  esc_codes(skip_spaces(Rest));
 esc_codes([C | Rest]) ->
   [C | esc_codes(Rest)].
 
-basic_string_ml(String) ->
-  % TODO: stripping "\" + whitespace at the end of lines (remember to extend
-  % the regexp for multiline basic strings)
-  case string:substr(String, 4, length(String) - 6) of
-    "\r\n" ++ Result -> esc_codes(Result);
-    "\n" ++ Result -> esc_codes(Result);
-    Result -> esc_codes(Result)
-  end.
+skip_spaces(" " ++ Rest) -> skip_spaces(Rest);
+skip_spaces("\t" ++ Rest) -> skip_spaces(Rest);
+skip_spaces("\n" ++ Rest) -> skip_spaces(Rest);
+skip_spaces("\r\n" ++ Rest) -> skip_spaces(Rest);
+skip_spaces(String) -> String.
 
 u([]) -> 0;
 u([C | Rest]) when C >= $0 andalso C =< $9 ->      (C - $0) + 16 * u(Rest);
