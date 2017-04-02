@@ -14,6 +14,8 @@ BARE_KEY = [a-zA-Z0-9_-]+
 BASIC_STRING = "([^\\\"\x00-\x1f]|\\[btnfr\"\\\\]|\\u{HEX4}|\\U{HEX8})*"
 LITERAL_STRING = '[^\']*'
 
+LITERAL_STRING_ML = '''('?'?[^'])*'''
+
 INTEGER = [+-]?([0-9]|[1-9](_?[0-9])+)
 PLUS_INTEGER = \+([0-9]|[1-9](_?[0-9])+)
 
@@ -67,7 +69,7 @@ false : {token, {bool, TokenLine, false}}.
 {LITERAL_STRING} : {token, {literal_string, TokenLine, literal_string(TokenChars)}}.
 % TODO: multiline strings
 %{BASIC_STRING_ML}   : {token, {basic_string_ml, TokenLine, TokenChars}}.
-%{LITERAL_STRING_ML} : {token, {literal_string_ml, TokenLine, TokenChars}}.
+{LITERAL_STRING_ML} : {token, {literal_string_ml, TokenLine, literal_string_ml(TokenChars)}}.
 
 {SP}+     : skip_token.
 {COMMENT} : skip_token.
@@ -131,6 +133,13 @@ basic_string(String) ->
 
 literal_string(String) ->
   string:substr(String, 2, length(String) - 2).
+
+literal_string_ml(String) ->
+  case string:substr(String, 4, length(String) - 6) of
+    "\n" ++ Result -> Result;
+    "\r\n" ++ Result -> Result;
+    Result -> Result
+  end.
 
 esc_codes("") -> "";
 esc_codes("\\b"  ++ Rest) -> [$\b | esc_codes(Rest)];
