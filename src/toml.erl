@@ -40,7 +40,7 @@ read_file(File) ->
 
 parse(String) ->
   % the grammar assumes that the input ends with newline character
-  case toml_lexer:string(unicode:characters_to_list([String, $\n])) of
+  case toml_lexer:tokenize(String) of
     {ok, Tokens, _EndLine} ->
       case toml_parser:parse(Tokens) of
         {ok, Result} ->

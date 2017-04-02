@@ -9,8 +9,6 @@ Known limitations
 
 * Types conveying time only store 1s precision (fraction of a second is
   truncated)
-* Nested arrays formatting requires whitespaces around `"["` and `"]"`
-  characters to work properly
 
 Contact and License
 -------------------

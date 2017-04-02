@@ -14,9 +14,9 @@ Nonterminals
 .
 
 Terminals
-  '[[' ']]' '[' ']' '{' '}'
+  '[' ']' '{' '}'
   '.' '=' ','
-  nl
+  nl space
   datetime_tz local_datetime local_date local_time
   bool key_float float key_integer integer bare_key
   basic_string literal_string
@@ -42,8 +42,8 @@ section_list -> section_list section : ['$2' | '$1'].
 
 section -> '['  section_name ']'  nl section_body :
   {table, lists:reverse('$2'), lists:reverse('$5')}.
-section -> '[[' section_name ']]' nl section_body :
-  {array_table, lists:reverse('$2'), lists:reverse('$5')}.
+section -> '[' '[' section_name ']' ']' nl section_body :
+  {array_table, lists:reverse('$3'), lists:reverse('$7')}.
 
 section_name -> key : ['$1'].
 section_name -> section_name '.' key : ['$3' | '$1'].
@@ -94,7 +94,10 @@ array -> '[' nls value_list nls ',' nls ']' : {array, lists:reverse('$3')}.
 value_list -> value : ['$1'].
 value_list -> value_list nls ',' nls value : ['$5' | '$1'].
 
+% XXX: the only place where 'space' is reported is between brackets in "[ ["
+% or "] ]".
 nls -> '$empty'.
+nls -> nls space.
 nls -> nls nl.
 
 %%----------------------------------------------------------

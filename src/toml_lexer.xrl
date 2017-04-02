@@ -43,8 +43,13 @@ TZOFFSET = (Z|[+-]{HOUR}:{MIN})
 
 Rules.
 
-\[\[ : {token, {'[[', TokenLine}}.
-\]\] : {token, {']]', TokenLine}}.
+% NOTE: These two rules need special postprocessing after being produced;
+% these are to signal to parser when "[[" and "[ [" was passed, which is an
+% important distinction for an array of tables. With this postprocessing,
+% tokens '[[' and ']]' never occur, and instead are replaced by a sequence of
+% '[', ']', and 'space' tokens, as appropriate.
+\[({SP}+\[)+ : {token, {'[[', TokenLine, TokenChars}}.
+\]({SP}+\])+ : {token, {']]', TokenLine, TokenChars}}.
 \[ : {token, {'[', TokenLine}}.
 \] : {token, {']', TokenLine}}.
 \{ : {token, {'{', TokenLine}}.
@@ -81,6 +86,43 @@ false : {token, {bool, TokenLine, false}}.
 %%%---------------------------------------------------------------------------
 
 Erlang code.
+
+-export([tokenize/1]).
+
+%% @doc Lexer entry point.
+
+-spec tokenize(string() | binary() | iolist()) ->
+  {ok, [term()], integer()} | {error, term(), integer()}.
+
+tokenize(String) ->
+  case string(unicode:characters_to_list([String, $\n])) of
+    {ok, Tokens, EndLine} ->
+      {ok, break_brackets_apart(Tokens), EndLine};
+    {error, Reason, EndLine} ->
+      {error, Reason, EndLine}
+  end.
+
+%%----------------------------------------------------------
+
+break_brackets_apart([]) ->
+  [];
+break_brackets_apart([{'[[', Line, Chars} | Rest]) ->
+  split_brackets(Chars, Line) ++ break_brackets_apart(Rest);
+break_brackets_apart([{']]', Line, Chars} | Rest]) ->
+  split_brackets(Chars, Line) ++ break_brackets_apart(Rest);
+break_brackets_apart([Token | Rest]) ->
+  [Token | break_brackets_apart(Rest)].
+
+split_brackets([], _Line) ->
+  [];
+split_brackets([C | Rest], Line) when C == $ ; C == $\t ->
+  [{space, Line} | split_brackets(skip_spaces(Rest), Line)];
+split_brackets([$[ | Rest], Line) ->
+  [{'[', Line} | split_brackets(Rest, Line)];
+split_brackets([$] | Rest], Line) ->
+  [{']', Line} | split_brackets(Rest, Line)].
+
+%%----------------------------------------------------------
 
 to_integer("+" ++ String) ->
   to_integer(String);
