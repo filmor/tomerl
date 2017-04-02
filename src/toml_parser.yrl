@@ -9,7 +9,7 @@ Nonterminals
   root_section section_list
   section section_name section_body
   key value string datetime
-  array value_list nls nls_comma
+  array value_list nls
   inline_table inline_kv_list
 .
 
@@ -84,25 +84,15 @@ datetime -> local_time     : {time, value('$1')}.
 
 %%----------------------------------------------------------
 
-array -> '['     ']' : {array, []}.
 array -> '[' nls ']' : {array, []}.
 
-array -> '['     value_list           ']' : {array, lists:reverse('$2')}.
-array -> '['     value_list nls       ']' : {array, lists:reverse('$2')}.
-array -> '['     value_list nls_comma ']' : {array, lists:reverse('$2')}.
-array -> '[' nls value_list           ']' : {array, lists:reverse('$3')}.
-array -> '[' nls value_list nls       ']' : {array, lists:reverse('$3')}.
-array -> '[' nls value_list nls_comma ']' : {array, lists:reverse('$3')}.
+array -> '[' nls value_list nls         ']' : {array, lists:reverse('$3')}.
+array -> '[' nls value_list nls ',' nls ']' : {array, lists:reverse('$3')}.
 
 value_list -> value : ['$1'].
-value_list -> value_list nls_comma value : ['$3' | '$1'].
+value_list -> value_list nls ',' nls value : ['$5' | '$1'].
 
-nls_comma -> ','.
-nls_comma -> ',' nls.
-nls_comma -> nls ','.
-nls_comma -> nls ',' nls.
-
-nls -> nl.
+nls -> '$empty'.
 nls -> nls nl.
 
 %%----------------------------------------------------------
