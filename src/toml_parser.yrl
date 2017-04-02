@@ -18,7 +18,7 @@ Terminals
   '.' '=' ','
   nl
   datetime_tz local_datetime local_date local_time
-  bool float plus_integer integer bare_key
+  bool key_float float key_integer integer bare_key
   basic_string literal_string
   basic_string_ml literal_string_ml
 .
@@ -58,14 +58,16 @@ section_body -> section_body key '=' value nl : [{'$2', '$4'} | '$1'].
 key -> basic_string : value('$1').
 key -> bare_key     : value('$1').
 key -> bool         : atom_to_list(value('$1')).
-key -> integer      : value('$1', raw).
+key -> key_integer  : value('$1', raw).
+key -> key_float    : value('$1', raw).
 key -> local_date   : value('$1', raw).
 
 %%----------------------------------------------------------
 
 value -> string   : '$1'.
-value -> plus_integer : value('$1').
-value -> integer  : value('$1', parsed).
+value -> key_integer : value('$1', parsed).
+value -> key_float   : value('$1', parsed).
+value -> integer  : value('$1').
 value -> float    : value('$1').
 value -> bool     : value('$1').
 value -> datetime : '$1'.

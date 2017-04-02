@@ -20,12 +20,14 @@ BASIC_STRING = "({CHAR}|{ESC_CHAR}|{U4}|{U8})*"
 BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""
 LITERAL_STRING_ML = '''('?'?[^'])*'''
 
-INTEGER = [+-]?([0-9]|[1-9](_?[0-9])+)
-PLUS_INTEGER = \+([0-9]|[1-9](_?[0-9])+)
+POS_INTEGER = ([0-9]|[1-9](_?[0-9])+)
+INTEGER = [+-]?{POS_INTEGER}
+KEY_INTEGER = -?{POS_INTEGER}
 
 FRACTION = \.[0-9](_?[0-9])*
 EXPONENT = [eE]{INTEGER}
 FLOAT = {INTEGER}({FRACTION}|{FRACTION}{EXPONENT}|{EXPONENT})
+KEY_FLOAT = -?{POS_INTEGER}[eE]-?{POS_INTEGER}
 
 YEAR  = ([0-9][0-9][0-9][0-9])
 MONTH = (0[1-9]|1[0-2])
@@ -62,11 +64,10 @@ Rules.
 true  : {token, {bool, TokenLine, true}}.
 false : {token, {bool, TokenLine, false}}.
 
+{KEY_FLOAT} : {token, {key_float, TokenLine, {TokenChars, to_float(TokenChars)}}}.
+{KEY_INTEGER} : {token, {key_integer, TokenLine, {TokenChars, to_integer(TokenChars)}}}.
 {FLOAT} : {token, {float, TokenLine, to_float(TokenChars)}}.
-% integer prefixed with "+" cannot be a bare key, but all the other forms are
-% allowed
-{PLUS_INTEGER} : {token, {plus_integer, TokenLine, to_integer(TokenChars)}}.
-{INTEGER} : {token, {integer, TokenLine, {TokenChars, to_integer(TokenChars)}}}.
+{INTEGER} : {token, {integer, TokenLine, to_integer(TokenChars)}}.
 {BARE_KEY} : {token, {bare_key, TokenLine, TokenChars}}.
 
 {BASIC_STRING}   : {token, {basic_string, TokenLine, basic_string(TokenChars)}}.
