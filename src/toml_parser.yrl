@@ -8,7 +8,7 @@ Nonterminals
   toml
   root_section section_list
   section section_name section_body
-  key value string datetime
+  key value key_value
   array value_list nls maybe_space
   inline_table inline_kv_list
 .
@@ -27,10 +27,9 @@ Rootsymbol toml.
 
 %%%---------------------------------------------------------------------------
 
-% TODO: change semantic values
-toml -> root_section              : {'$1', []}.
-toml -> root_section section_list : {'$1', lists:reverse('$2')}.
-toml ->              section_list : {[],   lists:reverse('$1')}.
+toml -> root_section              : '$1'.
+toml -> root_section section_list : lists:flatten(['$1', lists:reverse('$2')]).
+toml ->              section_list : lists:flatten(lists:reverse('$1')).
 
 root_section -> section_body : lists:reverse('$1').
 
@@ -42,17 +41,21 @@ section_list -> section_list section : ['$2' | '$1'].
 
 % XXX: the only places where 'space' is reported is before "[" or "]"
 section -> maybe_space '[' section_name maybe_space ']' nl section_body :
-  {table, lists:reverse('$3'), lists:reverse('$7')}.
+  [{table, line('$2'), lists:reverse('$3')} | lists:reverse('$7')].
 section -> maybe_space '[' '[' section_name maybe_space ']' ']' nl section_body :
-  {array_table, lists:reverse('$4'), lists:reverse('$9')}.
+  [{array_table, line('$2'), lists:reverse('$4')} | lists:reverse('$9')].
 
 section_name -> key : ['$1'].
 section_name -> section_name '.' key : ['$3' | '$1'].
 
 section_body -> nl : [].
-section_body -> key '=' value nl : [{'$1', '$3'}].
+section_body -> key_value nl : ['$1'].
 section_body -> section_body nl : '$1'.
-section_body -> section_body key '=' value nl : [{'$2', '$4'} | '$1'].
+section_body -> section_body key_value nl : ['$2' | '$1'].
+
+%%----------------------------------------------------------
+
+key_value -> key '=' value : {key, line('$2'), '$1', '$3'}.
 
 %%----------------------------------------------------------
 
@@ -65,25 +68,21 @@ key -> local_date   : value('$1', raw).
 
 %%----------------------------------------------------------
 
-value -> string   : '$1'.
-value -> key_integer : value('$1', parsed).
-value -> key_float   : value('$1', parsed).
-value -> integer  : value('$1').
-value -> float    : value('$1').
-value -> bool     : value('$1').
-value -> datetime : '$1'.
-value -> array    : '$1'.
+value -> basic_string      : value('$1').
+value -> basic_string_ml   : value('$1').
+value -> literal_string    : value('$1').
+value -> literal_string_ml : value('$1').
+value -> key_integer       : value('$1', parsed).
+value -> key_float         : value('$1', parsed).
+value -> integer           : value('$1').
+value -> float             : value('$1').
+value -> bool              : value('$1').
+value -> datetime_tz       : {datetime, element(1, value('$1')), element(2, value('$1'))}.
+value -> local_datetime    : {datetime, value('$1')}.
+value -> local_date        : {date, value('$1', parsed)}.
+value -> local_time        : {time, value('$1')}.
+value -> array        : '$1'.
 value -> inline_table : '$1'.
-
-string -> basic_string      : value('$1').
-string -> basic_string_ml   : value('$1').
-string -> literal_string    : value('$1').
-string -> literal_string_ml : value('$1').
-
-datetime -> datetime_tz    : {datetime, element(1, value('$1')), element(2, value('$1'))}.
-datetime -> local_datetime : {datetime, value('$1')}.
-datetime -> local_date     : {date, value('$1', parsed)}.
-datetime -> local_time     : {time, value('$1')}.
 
 %%----------------------------------------------------------
 
@@ -106,18 +105,25 @@ maybe_space -> space.
 
 %%----------------------------------------------------------
 
-inline_table -> '{' '}' : {table, []}.
-inline_table -> '{' inline_kv_list '}' : {table, lists:reverse('$2')}.
+inline_table -> '{' '}' :
+  {inline_table, []}.
+inline_table -> '{' inline_kv_list '}' :
+  {inline_table, lists:reverse('$2')}.
 
 % NOTE: as per spec and reference grammar, trailing comma is not allowed
-inline_kv_list -> key '=' value : [{'$1', '$3'}].
-inline_kv_list -> inline_kv_list ',' key '=' value : [{'$3', '$5'} | '$1'].
+inline_kv_list -> key_value : ['$1'].
+inline_kv_list -> inline_kv_list ',' key_value : ['$3' | '$1'].
 
 %%----------------------------------------------------------
 
 %%%---------------------------------------------------------------------------
 
 Erlang code.
+
+line({_TermName, Line}) ->
+  Line;
+line({_TermName, Line, _Value}) ->
+  Line.
 
 value({_TermName, _Line, {RawValue, _ParsedValue}}, raw = _Element) ->
   RawValue;
