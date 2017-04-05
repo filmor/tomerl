@@ -82,19 +82,16 @@ parse(String) ->
     {ok, Tokens, _EndLine} ->
       case toml_parser:parse(Tokens) of
         {ok, Result} ->
-          {ok, Result};
+          case toml_dict:build_store(Result) of
+            {ok, V} -> {ok, V};
+            {error, Reason} -> {error, {semantic, Reason}}
+          end;
         {error, {LineNumber, _ParserModule, _Message}} ->
           {error, {parse, LineNumber}}
       end;
     {error, {LineNumber, _LexerModule, _Message}, _} ->
       {error, {tokenize, LineNumber}}
   end.
-
--spec build_store(term()) ->
-  {ok, config()} | {error, semantic_error()}.
-
-build_store(_AST) ->
-  'TODO'.
 
 %%%---------------------------------------------------------------------------
 %%% explaining errors
@@ -103,6 +100,8 @@ build_store(_AST) ->
 -spec format_error(Reason :: term()) ->
   string().
 
+%format_error({semantic, Reason}) ->
+%  toml_dict:format_error(Reason);
 format_error({parse, Line}) ->
   "syntax error in line " ++ integer_to_list(Line);
 format_error({tokenize, Line}) ->
