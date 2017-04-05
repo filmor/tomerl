@@ -9,7 +9,7 @@ Nonterminals
   root_section section_list
   section section_name section_body
   key value string datetime
-  array value_list nls
+  array value_list nls maybe_space
   inline_table inline_kv_list
 .
 
@@ -40,10 +40,11 @@ section_list -> section_list section : ['$2' | '$1'].
 %%----------------------------------------------------------
 %% sections (a.k.a. tables)
 
-section -> '['  section_name ']'  nl section_body :
-  {table, lists:reverse('$2'), lists:reverse('$5')}.
-section -> '[' '[' section_name ']' ']' nl section_body :
-  {array_table, lists:reverse('$3'), lists:reverse('$7')}.
+% XXX: the only places where 'space' is reported is before "[" or "]"
+section -> maybe_space '[' section_name maybe_space ']' nl section_body :
+  {table, lists:reverse('$3'), lists:reverse('$7')}.
+section -> maybe_space '[' '[' section_name maybe_space ']' ']' nl section_body :
+  {array_table, lists:reverse('$4'), lists:reverse('$9')}.
 
 section_name -> key : ['$1'].
 section_name -> section_name '.' key : ['$3' | '$1'].
@@ -86,19 +87,22 @@ datetime -> local_time     : {time, value('$1')}.
 
 %%----------------------------------------------------------
 
-array -> '[' nls ']' : {array, []}.
+array -> maybe_space '[' nls maybe_space ']' : {array, []}.
 
-array -> '[' nls value_list nls         ']' : {array, lists:reverse('$3')}.
-array -> '[' nls value_list nls ',' nls ']' : {array, lists:reverse('$3')}.
+array -> maybe_space '[' nls value_list nls         maybe_space ']' :
+  {array, lists:reverse('$4')}.
+array -> maybe_space '[' nls value_list nls ',' nls maybe_space ']' :
+  {array, lists:reverse('$4')}.
 
 value_list -> value : ['$1'].
 value_list -> value_list nls ',' nls value : ['$5' | '$1'].
 
-% XXX: the only place where 'space' is reported is between brackets in "[ ["
-% or "] ]".
 nls -> '$empty'.
-nls -> nls space.
 nls -> nls nl.
+
+% XXX: the only places where 'space' is reported is before "[" or "]"
+maybe_space -> '$empty'.
+maybe_space -> space.
 
 %%----------------------------------------------------------
 
