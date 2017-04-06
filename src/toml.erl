@@ -6,8 +6,8 @@
 -module(toml).
 
 %% parser wrappers
--export([read_file/1]).
--export([parse/1]).
+-export([read_file/1, read_file/2]).
+-export([parse/1, parse/2]).
 %% explaining errors
 -export([format_error/1]).
 %% data accessors
@@ -18,7 +18,8 @@
 -export_type([config/0, section/0, key/0, value/0]).
 -export_type([datetime/0, toml_array/0]).
 -export_type([jsx_object/0, jsx_list/0, jsx_value/0]).
--export_type([parse_error/0]).
+-export_type([validate_fun/0, validate_fun_return/0]).
+-export_type([error/0]).
 
 %%%---------------------------------------------------------------------------
 
@@ -67,9 +68,19 @@
 %% `TZ' is either a `"Z"' (the same as `"+00:00"') or has format
 %% `"[+-]HH:MM"'.
 
--type parse_error() :: {parse, Line :: pos_integer()}
-                     | {tokenize, Line :: pos_integer()}
-                     | {semantic, term()}.
+-type validate_fun() ::
+  fun((section(), key(), value(), Arg :: term()) -> validate_fun_return()).
+
+-type validate_fun_return() :: ok | {ok, Data :: term()} | ignore
+                             | {error, validate_error()}.
+
+-type validate_error() :: term().
+
+-type error() :: {parse, Line :: pos_integer()}
+               | {tokenize, Line :: pos_integer()}
+               | {semantic, term()}
+               | {bad_return, Where :: term(), Result :: term()}
+               | {validate, Where :: term(), validate_error()}.
 
 %%%---------------------------------------------------------------------------
 %%% parser wrappers
@@ -78,7 +89,7 @@
 %% @doc Parse a TOML file on disk.
 
 -spec read_file(file:filename()) ->
-  {ok, config()} | {error, ReadError | parse_error()}
+  {ok, config()} | {error, ReadError | error()}
   when ReadError :: file:posix() | badarg | terminated | system_limit.
 
 read_file(File) ->
@@ -87,18 +98,38 @@ read_file(File) ->
     {error, Reason} -> {error, Reason}
   end.
 
+%% @doc Parse a TOML file on disk.
+
+-spec read_file(file:filename(), {validate_fun(), Arg :: term()}) ->
+  {ok, config()} | {error, ReadError | error()}
+  when ReadError :: file:posix() | badarg | terminated | system_limit.
+
+read_file(File, {Fun, _Arg} = Validate) when is_function(Fun, 4) ->
+  case file:read_file(File) of
+    {ok, Content} -> parse(Content, Validate);
+    {error, Reason} -> {error, Reason}
+  end.
+
 %% @doc Parse a TOML config from a string.
 
 -spec parse(string() | binary() | iolist()) ->
-  {ok, config()} | {error, parse_error()}.
+  {ok, config()} | {error, error()}.
 
 parse(String) ->
+  parse(String, {fun accept_all/4, []}).
+
+%% @doc Parse a TOML config from a string.
+
+-spec parse(string() | binary() | iolist(), {validate_fun(), Arg :: term()}) ->
+  {ok, config()} | {error, error()}.
+
+parse(String, {Fun, Arg} = _Validate) when is_function(Fun, 4) ->
   % the grammar assumes that the input ends with newline character
   case toml_lexer:tokenize(String) of
     {ok, Tokens, _EndLine} ->
       case toml_parser:parse(Tokens) of
         {ok, Result} ->
-          build_config(Result);
+          build_config(Result, Fun, Arg);
         {error, {LineNumber, _ParserModule, _Message}} ->
           {error, {parse, LineNumber}}
       end;
@@ -106,20 +137,37 @@ parse(String) ->
       {error, {tokenize, LineNumber}}
   end.
 
+%% @doc Default validation function that accepts all values.
+
+-spec accept_all(section(), key(), value(), term()) ->
+  ok.
+
+accept_all(_Section, _Key, _Value, _Arg) ->
+  ok.
+
 %%----------------------------------------------------------
 %% build_config() {{{
 
 %% @doc Convert AST coming from parser to a config representation.
 
--spec build_config([term()]) ->
-  {ok, config()} | {error, {semantic, term()}}.
+-spec build_config([term()], validate_fun(), term()) ->
+  {ok, config()} | {error, Reason}
+  when Reason :: {semantic, term()}
+               | {validate, Where :: term(), validate_error()}
+               | {bad_return, Where :: term(), term()}.
 
-build_config(Directives) ->
+build_config(Directives, Fun, Arg) ->
   case toml_dict:build_store(Directives) of
     {ok, Store} ->
       EmptyConfig = dict:store([], empty_section(), dict:new()),
-      Config = toml_dict:fold(fun build_config/4, EmptyConfig, Store),
-      {ok, {toml, Config}};
+      try toml_dict:fold(fun build_config/4, {Fun, Arg, EmptyConfig}, Store) of
+        {_, _, Config} -> {ok, {toml, Config}}
+      catch
+        throw:{bad_return, Where, Result} ->
+          {error, {bad_return, Where, Result}};
+        throw:{validate, Where, Reason} ->
+          {error, {validate, Where, Reason}}
+      end;
     {error, Reason} ->
       {error, {semantic, Reason}}
   end.
@@ -129,20 +177,37 @@ build_config(Directives) ->
 -spec build_config(section(), key(), section | value(), term()) ->
   term().
 
-build_config(Section, Key, section = _Value, Config) ->
+build_config(Section, Key, section = _Value, {ValidateFun, Arg, Config}) ->
   NewConfig = dict:update(
     Section,
     fun({Keys, SubSects}) -> {Keys, [Key | SubSects]} end,
     Config
   ),
-  dict:store(Section ++ [Key], empty_section(), NewConfig);
-build_config(Section, Key, {_T, _V} = Value, Config) ->
+  {ValidateFun, Arg, dict:store(Section ++ [Key], empty_section(), NewConfig)};
+build_config(Section, Key, {_T, _V} = Value, {ValidateFun, Arg, Config}) ->
   % NOTE: array value from `toml_dict' is compatible with this module
-  dict:update(
-    Section,
-    fun({Keys, SubSects}) -> {dict:store(Key, Value, Keys), SubSects} end,
-    Config
-  ).
+  NewConfig = case ValidateFun(Section, Key, Value, Arg) of
+    ok ->
+      dict:update(
+        Section,
+        fun({Keys, SubSects}) -> {dict:store(Key, Value, Keys), SubSects} end,
+        Config
+      );
+    {ok, Data} ->
+      Value1 = {data, Data},
+      dict:update(
+        Section,
+        fun({Keys, SubSects}) -> {dict:store(Key, Value1, Keys), SubSects} end,
+        Config
+      );
+    ignore ->
+      Config;
+    {error, Reason} ->
+      erlang:throw({validate, {Section, Key}, Reason});
+    Result ->
+      erlang:throw({bad_return, {Section, Key}, Result})
+  end,
+  {ValidateFun, Arg, NewConfig}.
 
 %% @doc Create a value for an empty section.
 
@@ -163,6 +228,18 @@ empty_section() ->
 -spec format_error(Reason :: term()) ->
   string().
 
+format_error({validate, _Where, Reason}) ->
+  % TODO: use `Where' (error location)
+  unicode:characters_to_list([
+    "validation error: ",
+    io_lib:print(Reason, 1, 16#ffffffff, -1)
+  ]);
+format_error({bad_return, _Where, Result}) ->
+  % TODO: use `Where' (error location)
+  unicode:characters_to_list([
+    "unexpected value from validation function: ",
+    io_lib:print(Result, 1, 16#ffffffff, -1)
+  ]);
 format_error({semantic, Reason}) ->
   toml_dict:format_error(Reason);
 format_error({parse, Line}) ->
