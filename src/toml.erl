@@ -213,6 +213,7 @@ get_value(Section, Key, {toml, _} = Config, Default) ->
   end.
 
 %% @doc Check if the section exists.
+%%   If there is a key under the specified name, `false' is returned.
 
 -spec exists(section(), config()) ->
   boolean().
@@ -221,14 +222,21 @@ exists(Section, {toml, Store} = _Config) ->
   dict:is_key(Section, Store).
 
 %% @doc Check if the key exists.
+%%   If there is a section under the specified name, `false' is returned.
 
 -spec exists(section(), key(), config()) ->
   boolean().
 
 exists(Section, Key, {toml, Store} = _Config) ->
   case dict:find(Section, Store) of
-    {ok, {KeyValues, _SubSections}} -> dict:is_key(Key, KeyValues);
-    error -> false
+    {ok, {KeyValues, _SubSections}} ->
+      case dict:find(Key, KeyValues) of
+        {ok, {_T,_V}} -> true;
+        {ok, section} -> false;
+        error -> false
+      end;
+    error ->
+      false
   end.
 
 %% @doc List keys of a section.
