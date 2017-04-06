@@ -75,6 +75,8 @@
 %%% parser wrappers
 %%%---------------------------------------------------------------------------
 
+%% @doc Parse a TOML file on disk.
+
 -spec read_file(file:filename()) ->
   {ok, config()} | {error, ReadError | parse_error()}
   when ReadError :: file:posix() | badarg | terminated | system_limit.
@@ -84,6 +86,8 @@ read_file(File) ->
     {ok, Content} -> parse(Content);
     {error, Reason} -> {error, Reason}
   end.
+
+%% @doc Parse a TOML config from a string.
 
 -spec parse(string() | binary() | iolist()) ->
   {ok, config()} | {error, parse_error()}.
@@ -108,6 +112,8 @@ parse(String) ->
 %%%---------------------------------------------------------------------------
 %%% explaining errors
 %%%---------------------------------------------------------------------------
+
+%% @doc Prepare a human-readable error message out of an error.
 
 -spec format_error(Reason :: term()) ->
   string().
@@ -182,7 +188,7 @@ sections(_Path, _Config) ->
 %% @doc Fold over keys of a section.
 
 -spec foldk(section(), fun(), term(), config()) ->
-  'TODO'.
+  term().
 
 foldk(_Path, _Fun, _Acc, _Config) ->
   'TODO'.
@@ -190,7 +196,7 @@ foldk(_Path, _Fun, _Acc, _Config) ->
 %% @doc Fold over direct subsections of a section.
 
 -spec folds(section(), fun(), term(), config()) ->
-  'TODO'.
+  term().
 
 folds(_Path, _Fun, _Acc, _Config) ->
   'TODO'.
@@ -205,40 +211,53 @@ folds(_Path, _Fun, _Acc, _Config) ->
 %%   Sections get replaced, too.
 
 -spec set_value(section(), key(), value(), config()) ->
-  Old :: value() | none.
+  {OldValue :: none | value(), NewConfig :: config()}.
 
 set_value(_Path, _Key, _Value, _Config) ->
   'TODO'.
 
 %% @doc Set a value for an undefined key.
-%%   If the key has a value (or there's a section of this name), noth
+%%   If the key has a value (or there's a section of this name), nothing
+%%   happens.
 
 -spec set_default(section(), key(), value(), config()) ->
-  set | exists.
+  {set | exists, NewConfig :: config()}.
 
 set_default(_Path, _Key, _Value, _Config) ->
   'TODO'.
 
+%% @doc Delete a section.
+
 -spec delete(section(), config()) ->
-  ok.
+  config().
 
 delete(_Path, _Config) ->
   'TODO'.
 
+%% @doc Unset a specific key from a section.
+
 -spec delete(section(), key(), config()) ->
-  Old :: value() | none.
+  {OldValue :: none | value(), NewConfig :: config()}.
 
 delete(_Path, _Key, _Config) ->
   'TODO'.
 
+%% @doc Update a value of a key using a specified function.
+%%
+%%   Function dies (`erlang:error()') if the key is not set.
+
 -spec update(section(), key(), fun(), config()) ->
-  Old :: value().
+  {OldValue :: value(), NewConfig :: config()}.
 
 update(_Path, _Key, _Fun, _Config) ->
   'TODO'.
 
+%% @doc Update a value of a key using a specified function.
+%%
+%%   If the key is not set, the `Fun' function is called with `Initial' value.
+
 -spec update(section(), key(), fun(), term(), config()) ->
-  Old :: value() | none.
+  {OldValue :: none | value(), NewConfig :: config()}.
 
 update(_Path, _Key, _Fun, _Initial, _Config) ->
   'TODO'.
