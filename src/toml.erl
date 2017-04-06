@@ -132,9 +132,7 @@ build_config(Directives) ->
 build_config(Section, Key, section = _Value, Config) ->
   NewConfig = dict:update(
     Section,
-    fun({Keys, SubSects}) ->
-      {dict:store(Key, section, Keys), [Key | SubSects]}
-    end,
+    fun({Keys, SubSects}) -> {Keys, [Key | SubSects]} end,
     Config
   ),
   dict:store(Section ++ [Key], empty_section(), NewConfig);
@@ -190,11 +188,15 @@ format_error(Reason) ->
 
 get_value(Section, Key, {toml, Store} = _Config) ->
   case dict:find(Section, Store) of
-    {ok, {KeyValues, _SubSections}} ->
+    {ok, {KeyValues, SubSections}} ->
       case dict:find(Key, KeyValues) of
-        {ok, {_T,_V} = Value} -> Value;
-        {ok, section} -> section;
-        error -> none
+        {ok, {_T,_V} = Value} ->
+          Value;
+        error ->
+          case lists:member(Key, SubSections) of
+            true -> section;
+            false -> none
+          end
       end;
     error ->
       none
@@ -229,14 +231,8 @@ exists(Section, {toml, Store} = _Config) ->
 
 exists(Section, Key, {toml, Store} = _Config) ->
   case dict:find(Section, Store) of
-    {ok, {KeyValues, _SubSections}} ->
-      case dict:find(Key, KeyValues) of
-        {ok, {_T,_V}} -> true;
-        {ok, section} -> false;
-        error -> false
-      end;
-    error ->
-      false
+    {ok, {KeyValues, _SubSections}} -> dict:is_key(Key, KeyValues);
+    error -> false
   end.
 
 %% @doc List keys of a section.
@@ -249,14 +245,8 @@ exists(Section, Key, {toml, Store} = _Config) ->
 
 keys(Section, {toml, Store} = _Config) ->
   case dict:find(Section, Store) of
-    {ok, {KeyValues, _SubSections}} ->
-      dict:fold(
-        fun (_K, section, Acc) -> Acc; (K, {_T,_V}, Acc) -> [K | Acc] end,
-        [],
-        KeyValues
-      );
-    error ->
-      none
+    {ok, {KeyValues, _SubSections}} -> dict:fetch_keys(KeyValues);
+    error -> none
   end.
 
 %% @doc List direct subsections of a section.
