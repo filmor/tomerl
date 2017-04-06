@@ -4,7 +4,6 @@
 %%%   Utility functions to convert AST coming from parser to a set of nested
 %%%   dictionaries.
 %%%
-%%% @todo array tables
 %%% @todo precise error reporting
 %%% @end
 %%%---------------------------------------------------------------------------
@@ -44,8 +43,8 @@
 %%----------------------------------------------------------
 %% types coming from AST {{{
 
--type ast_section_header() :: {table, line(), ast_section_name()}.
-% also: `{array_table, line(), ast_section_name()}'
+-type ast_section_header() :: {table, line(), ast_section_name()}
+                            | {array_table, line(), ast_section_name()}.
 
 -type ast_section_name() :: [string(), ...].
 
@@ -73,7 +72,8 @@
     {line(), key, scalar()}
   | {line(), key, {array, store_array()}}
   | {line(), object, store()}
-  | {line(), section, store()}. % TODO: array_section
+  | {line(), section, store()}
+  | {line(), array_section, [store()]}.
 
 -type store_array() ::
     {empty, []}
@@ -131,10 +131,10 @@ build_store([{table, Line, SectionName} | Rest] = _Directives,
   NewValues = add_section(SectionName, Line, Store),
   build_store(Rest, SectionName, NewValues);
 
-%build_store([{array_table, Line, SectionName} | Rest] = _Directives,
-%            _CurrentSection, Store) ->
-%  NewValues = add_array_section(...),
-%  build_store(Rest, SectionName, NewValues);
+build_store([{array_table, Line, SectionName} | Rest] = _Directives,
+            _CurrentSection, Store) ->
+  NewValues = add_array_section(SectionName, Line, Store),
+  build_store(Rest, SectionName, NewValues);
 
 build_store([{key, Line, Key, Value} | Rest] = _Directives,
             CurrentSection, Store) ->
@@ -186,8 +186,10 @@ set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
     {ok, {PrevLine, section, SubStore}} ->
       NewSubStore = set(Rest, Key, Value, Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
-    %{ok, {PrevLine, array_section, SubStore}} ->
-    %  TODO: what to do here? how to append to most recent object?
+    {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
+      NewSubStore = set(Rest, Key, Value, Line, SubStore),
+      NewSubStoreList = [NewSubStore | RestStores],
+      dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     {ok, {PrevLine, key, _PrevValue}} ->
@@ -229,8 +231,10 @@ add_section([Name | Rest] = _SectionName, Line, Store) ->
     {ok, {PrevLine, section, SubStore}} ->
       NewSubStore = add_section(Rest, Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
-    %{ok, {PrevLine, array_section, SubStore}} ->
-    %  TODO: what to do here? how to append to most recent object?
+    {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
+      NewSubStore = add_section(Rest, Line, SubStore),
+      NewSubStoreList = [NewSubStore | RestStores],
+      dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     {ok, {PrevLine, key, _PrevValue}} ->
@@ -243,10 +247,46 @@ add_section([Name | Rest] = _SectionName, Line, Store) ->
 
 %% }}}
 %%----------------------------------------------------------
-%% add_array_section(Path, Line, Store) (TODO) {{{
+%% add_array_section(Path, Line, Store) {{{
 
-%add_array_section(...) ->
-%  ...
+%% @doc Add a new section to value store.
+
+-spec add_array_section(ast_section_name(), line(), store()) ->
+  store().
+
+add_array_section([Name] = _SectionName, Line, Store) ->
+  case dict:find(Name, Store) of
+    {ok, {PrevLine, section, _SubStore}} ->
+      erlang:throw({type_mismatch, PrevLine}); % TODO: different error
+    {ok, {PrevLine, array_section, SubStores}} ->
+      NewSubStoreList = [empty_store() | SubStores],
+      dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
+    {ok, {PrevLine, object, _PrevValue}} ->
+      erlang:throw({duplicate, PrevLine}); % TODO: different error
+    {ok, {PrevLine, key, _PrevValue}} ->
+      erlang:throw({duplicate, PrevLine}); % TODO: different error
+    error ->
+      dict:store(Name, {Line, array_section, [empty_store()]}, Store)
+  end;
+
+add_array_section([Name | Rest] = _SectionName, Line, Store) ->
+  case dict:find(Name, Store) of
+    {ok, {PrevLine, section, SubStore}} ->
+      NewSubStore = add_array_section(Rest, Line, SubStore),
+      dict:store(Name, {PrevLine, section, NewSubStore}, Store);
+    {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
+      NewSubStore = add_array_section(Rest, Line, SubStore),
+      NewSubStoreList = [NewSubStore | RestStores],
+      dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
+    {ok, {PrevLine, object, _PrevValue}} ->
+      erlang:throw({duplicate, PrevLine}); % TODO: different error
+    {ok, {PrevLine, key, _PrevValue}} ->
+      erlang:throw({duplicate, PrevLine}); % TODO: different error
+    error ->
+      NewSubStore = add_array_section(Rest, Line, empty_store()),
+      % TODO: mark the section as autodefined
+      dict:store(Name, {Line, section, NewSubStore}, Store)
+  end.
 
 %% }}}
 %%----------------------------------------------------------
@@ -294,8 +334,7 @@ build_object({inline_table, KeyValues} = _Object) ->
 %%
 %%   Array of arrays is converted recursively.
 %%
-%%   Array of objects is converted to list of JSX-like structures (see
-%%   {@link object_to_jsx/1}).
+%%   Array of objects is converted to list of JSX-like structures.
 
 -spec build_array(ast_array()) ->
   store_array().
@@ -306,7 +345,7 @@ build_array({array, [HE | Rest] = Elements} = _Value) ->
   Type = typeof(HE),
   case lists:all(fun(E) -> Type == typeof(E) end, Rest) of
     true when Type == object ->
-      {Type, [object_to_jsx(E) || E <- Elements]};
+      {Type, [store_to_jsx(build_object(E)) || E <- Elements]};
     true when Type == array ->
       {Type, [build_array(E) || E <- Elements]};
     true ->
@@ -319,16 +358,7 @@ build_array({array, [HE | Rest] = Elements} = _Value) ->
 
 %% }}}
 %%----------------------------------------------------------
-%% object_to_jsx() {{{
-
-%% @doc Convert inline table AST fragment to a JSX-like structure.
-
--spec object_to_jsx(ast_inline_table()) ->
-  jsx_object().
-
-object_to_jsx(Object) ->
-  Store = build_object(Object),
-  store_to_jsx(Store).
+%% store_to_jsx() {{{
 
 %% @doc Convert a value store to a JSX-like structure.
 
@@ -349,9 +379,14 @@ store_to_jsx(Store) ->
 store_to_jsx_fold(K, {_Line, T, V}, Acc) ->
   Key = unicode:characters_to_binary(K),
   Value = case V of
-    Store when T == object -> store_to_jsx(Store);
-    {array, Array} -> array_to_jsx(Array);
-    String when is_list(String) -> unicode:characters_to_binary(String);
+    Stores when T == array_section ->
+      lists:reverse([store_to_jsx(S) || S <- Stores]);
+    Store when T == section; T == object ->
+      store_to_jsx(Store);
+    {array, Array} ->
+      array_to_jsx(Array);
+    String when is_list(String) ->
+      unicode:characters_to_binary(String);
     _ -> V
   end,
   [{Key, Value} | Acc].
@@ -419,12 +454,11 @@ format_error(_Reason) ->
 %% @doc Traverse sections ("tables") and keys set in TOML file.
 %%
 %%   All keys of the section and all of the subsections are visited before
-%%   moving to a sibling section.
+%%   moving to a sibling section. `Fun' is called with `section' argument
+%%   before a call for any key or subsection. Otherwise, the traversal order
+%%   is unspecified.
 %%
-%%   `Fun' is called with `section' argument before a call for any key or
-%%   subsection.
-%%
-%%   Otherwise, the order of the traversal is unspecified.
+%%   Array sections are passed as they were arrays of inline sections.
 
 -spec fold(Fun, AccIn, store()) ->
   AccOut
@@ -462,7 +496,11 @@ dict_fold_traverse(Key, {_Line, section, SubStore}, {Fun, Path, Acc}) ->
   NewAcc = Fun(Path, Key, section, Acc),
   {_, _, NewAcc1} =
     dict:fold(fun dict_fold_traverse/3, {Fun, Path ++ [Key], NewAcc}, SubStore),
-  {Fun, Path, NewAcc1}.
+  {Fun, Path, NewAcc1};
+dict_fold_traverse(Key, {_Line, array_section, SubStores}, {Fun, Path, Acc}) ->
+  Values = lists:reverse([store_to_jsx(Store) || Store <- SubStores]),
+  NewAcc = Fun(Path, Key, {array, {object, Values}}, Acc),
+  {Fun, Path, NewAcc}.
 
 %%%---------------------------------------------------------------------------
 %%% vim:ft=erlang:foldmethod=marker
