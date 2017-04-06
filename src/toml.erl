@@ -16,8 +16,9 @@
 -export([set_value/4, set_default/4, delete/2, delete/3, update/4, update/5]).
 
 -export_type([config/0, section/0, key/0, value/0]).
--export_type([toml_datetime/0, toml_array/0, toml_object/0]).
--export_type([parse_error/0, line/0]).
+-export_type([datetime/0, toml_array/0]).
+-export_type([jsx_object/0, jsx_list/0, jsx_value/0]).
+-export_type([parse_error/0]).
 
 %%%---------------------------------------------------------------------------
 
@@ -32,30 +33,43 @@
   | {integer, integer()}
   | {float, float()}
   | {boolean, boolean()}
-  | {datetime, toml_datetime()}
+  | {datetime, datetime()}
   | {array, toml_array()}
   | {data, term()}.
 
 -type toml_array() ::
-    {Type :: empty, []}
-  | {Type :: string, [string(), ...]}
-  | {Type :: integer, [integer(), ...]}
-  | {Type :: float, [float(), ...]}
-  | {Type :: boolean, [boolean(), ...]}
-  | {Type :: datetime, [toml_datetime(), ...]}
-  | {Type :: array, [toml_array(), ...]}
-  | {Type :: object, [toml_object(), ...]}.
+    {empty, []}
+  | {string, [string(), ...]}
+  | {integer, [integer(), ...]}
+  | {float, [float(), ...]}
+  | {boolean, [boolean(), ...]}
+  | {datetime, [datetime(), ...]}
+  | {array, [toml_array(), ...]}
+  | {object, [jsx_object(), ...]}.
 
--type toml_object() :: list().
-%% JSX-style objects.
-%% TODO: be more specific
+-type jsx_object() :: [{}] | [{binary(), jsx_value()}, ...].
 
--type toml_datetime() :: tuple().
-%% TODO: be more specific
+-type jsx_list() :: [jsx_value()].
 
--type line() :: pos_integer().
+-type jsx_value() :: binary()
+                   | integer()
+                   | float()
+                   | boolean()
+                   | datetime()
+                   | jsx_list()
+                   | jsx_object().
 
--type parse_error() :: {parse, line()} | {tokenize, line()} | {semantic, term()}.
+-type datetime() ::
+    {datetime, calendar:datetime(), TZ :: string()}
+  | {datetime, calendar:datetime()}
+  | {date, calendar:date()}
+  | {time, calendar:time()}.
+%% `TZ' is either a `"Z"' (the same as `"+00:00"') or has format
+%% `"[+-]HH:MM"'.
+
+-type parse_error() :: {parse, Line :: pos_integer()}
+                     | {tokenize, Line :: pos_integer()}
+                     | {semantic, term()}.
 
 %%%---------------------------------------------------------------------------
 %%% parser wrappers
