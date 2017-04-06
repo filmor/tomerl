@@ -16,6 +16,9 @@
 -export([fold/3]).
 %-export([format_error/1]).
 
+-export_type([store/0, store_array/0]).
+-export_type([jsx_object/0, jsx_list/0, jsx_value/0, scalar/0, datetime/0]).
+
 %%%---------------------------------------------------------------------------
 %%% data types
 
@@ -61,7 +64,7 @@
 %%----------------------------------------------------------
 %% value store {{{
 
--type store() :: term().
+-opaque store() :: term().
 %% Mapping from {@type store_key()} to {@type store_value()}.
 
 -type store_key() :: string().
@@ -92,7 +95,8 @@
 -type jsx_list() :: [jsx_value()].
 
 -type jsx_value() :: binary() | scalar() | jsx_list() | jsx_object().
-%% NOTE: `string()' doesn't occur, there's `binary()' instead
+%% NOTE: `string()' doesn't occur, there's `binary()' instead.
+%%
 %% NOTE: `datetime()' is not quite JSX-compatible.
 
 %% }}}
@@ -190,7 +194,7 @@ set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
     {ok, {PrevLine, key, _PrevValue}} ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     error ->
-      NewSubStore = set(Rest, Key, Value, Line, dict:new()),
+      NewSubStore = set(Rest, Key, Value, Line, empty_store()),
       % TODO: mark the section as autodefined
       dict:store(Name, {Line, section, NewSubStore}, Store)
   end.
@@ -217,7 +221,7 @@ add_section([Name] = _SectionName, Line, Store) ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     error ->
       % not defined, add an empty section
-      NewSubStore = dict:new(),
+      NewSubStore = empty_store(),
       dict:store(Name, {Line, section, NewSubStore}, Store)
   end;
 
@@ -233,7 +237,7 @@ add_section([Name | Rest] = _SectionName, Line, Store) ->
     {ok, {PrevLine, key, _PrevValue}} ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     error ->
-      NewSubStore = add_section(Rest, Line, dict:new()),
+      NewSubStore = add_section(Rest, Line, empty_store()),
       % TODO: mark the section as autodefined
       dict:store(Name, {Line, section, NewSubStore}, Store)
   end.
