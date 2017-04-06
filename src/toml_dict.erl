@@ -5,7 +5,6 @@
 %%%   dictionaries.
 %%%
 %%% @todo array tables
-%%% @todo `fold()' function + custom validation function
 %%% @todo precise error reporting
 %%% @todo `format_error()' function
 %%% @end
@@ -14,7 +13,7 @@
 -module(toml_dict).
 
 -export([build_store/1]).
-%-export([fold/3]).
+-export([fold/3]).
 %-export([format_error/1]).
 
 %%%---------------------------------------------------------------------------
@@ -396,6 +395,58 @@ typeof({inline_table, _} = _Value) -> object.
 
 %format_error(_Reason) ->
 %  'TODO'.
+
+%%%---------------------------------------------------------------------------
+%%% value store traversal
+%%%---------------------------------------------------------------------------
+
+%% @doc Traverse sections ("tables") and keys set in TOML file.
+%%
+%%   All keys of the section and all of the subsections are visited before
+%%   moving to a sibling section.
+%%
+%%   `Fun' is called with `section' argument before a call for any key or
+%%   subsection.
+%%
+%%   Otherwise, the order of the traversal is unspecified.
+
+-spec fold(Fun, AccIn, store()) ->
+  AccOut
+  when Fun :: fun((Path, Key, Value | section, AccIn) -> AccOut),
+       Path :: [string()],
+       Key :: string(),
+       Value :: {string, string()}
+              | {integer, integer()}
+              | {float, float()}
+              | {boolean, boolean()}
+              | {datetime, datetime()}
+              | {array, store_array()},
+       AccIn :: term(),
+       AccOut :: term().
+
+fold(Fun, AccIn, Store) when is_function(Fun, 4) ->
+  {_, _, AccOut} = dict:fold(fun dict_fold_traverse/3, {Fun,[],AccIn}, Store),
+  AccOut.
+
+%% @doc Workhorse for {@link fold/3}.
+%%   Intended to be passed to {@link dict:fold/3}.
+
+dict_fold_traverse(Key, {_Line, key, {array, Values}}, {Fun, Path, Acc}) ->
+  NewAcc = Fun(Path, Key, {array, Values}, Acc),
+  {Fun, Path, NewAcc};
+dict_fold_traverse(Key, {_Line, key, Value}, {Fun, Path, Acc}) ->
+  NewAcc = Fun(Path, Key, {typeof(Value), Value}, Acc),
+  {Fun, Path, NewAcc};
+dict_fold_traverse(Key, {_Line, object, SubStore}, {Fun, Path, Acc}) ->
+  NewAcc = Fun(Path, Key, section, Acc),
+  {_, _, NewAcc1} =
+    dict:fold(fun dict_fold_traverse/3, {Fun, Path ++ [Key], NewAcc}, SubStore),
+  {Fun, Path, NewAcc1};
+dict_fold_traverse(Key, {_Line, section, SubStore}, {Fun, Path, Acc}) ->
+  NewAcc = Fun(Path, Key, section, Acc),
+  {_, _, NewAcc1} =
+    dict:fold(fun dict_fold_traverse/3, {Fun, Path ++ [Key], NewAcc}, SubStore),
+  {Fun, Path, NewAcc1}.
 
 %%%---------------------------------------------------------------------------
 %%% vim:ft=erlang:foldmethod=marker
