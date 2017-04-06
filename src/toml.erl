@@ -265,7 +265,7 @@ sections(Section, {toml, Store} = _Config) ->
 -spec foldk(section(), fun(), term(), config()) ->
   term().
 
-foldk(_Path, _Fun, _Acc, _Config) ->
+foldk(_Section, _Fun, _Acc, {toml, _Store} = _Config) ->
   'TODO'.
 
 %% @doc Fold over direct subsections of a section.
@@ -273,13 +273,13 @@ foldk(_Path, _Fun, _Acc, _Config) ->
 -spec folds(section(), fun(), term(), config()) ->
   term().
 
-folds(_Path, _Fun, _Acc, _Config) ->
+folds(_Section, _Fun, _Acc, {toml, _Store} = _Config) ->
   'TODO'.
 
-%to_list(_Config) ->
+%to_list({toml, Store} = _Config) ->
 %  'TODO'.
 
-%to_list(_Path, _Config) ->
+%to_list(Section, {toml, Store} = _Config) ->
 %  'TODO'.
 
 %%%---------------------------------------------------------------------------
