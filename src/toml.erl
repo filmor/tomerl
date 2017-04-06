@@ -188,8 +188,17 @@ format_error(Reason) ->
 -spec get_value(section(), key(), config()) ->
   value() | none | section.
 
-get_value(_Path, _Key, _Config) ->
-  'TODO'.
+get_value(Section, Key, {toml, Store} = _Config) ->
+  case dict:find(Section, Store) of
+    {ok, {KeyValues, _SubSections}} ->
+      case dict:find(Key, KeyValues) of
+        {ok, {_T,_V} = Value} -> Value;
+        {ok, section} -> section;
+        error -> none
+      end;
+    error ->
+      none
+  end.
 
 %% @doc Get tagged value from config.
 %%   If the key doesn't exist, specified default is returned.
@@ -197,40 +206,61 @@ get_value(_Path, _Key, _Config) ->
 -spec get_value(section(), key(), config(), value()) ->
   value() | section.
 
-get_value(_Path, _Key, _Config, _Default) ->
-  'TODO'.
+get_value(Section, Key, {toml, _} = Config, Default) ->
+  case get_value(Section, Key, Config) of
+    none -> Default;
+    Any -> Any
+  end.
 
 %% @doc Check if the section exists.
 
 -spec exists(section(), config()) ->
   boolean().
 
-exists(_Path, _Config) ->
-  'TODO'.
+exists(Section, {toml, Store} = _Config) ->
+  dict:is_key(Section, Store).
 
 %% @doc Check if the key exists.
 
 -spec exists(section(), key(), config()) ->
   boolean().
 
-exists(_Path, _Key, _Config) ->
-  'TODO'.
+exists(Section, Key, {toml, Store} = _Config) ->
+  case dict:find(Section, Store) of
+    {ok, {KeyValues, _SubSections}} -> dict:is_key(Key, KeyValues);
+    error -> false
+  end.
 
 %% @doc List keys of a section.
+%%
+%%   Only keys that correspond to scalars or arrays are returned. Subsections
+%%   (which include inline sections) are omitted.
 
 -spec keys(section(), config()) ->
-  [key()].
+  [key()] | none.
 
-keys(_Path, _Config) ->
-  'TODO'.
+keys(Section, {toml, Store} = _Config) ->
+  case dict:find(Section, Store) of
+    {ok, {KeyValues, _SubSections}} ->
+      dict:fold(
+        fun (_K, section, Acc) -> Acc; (K, {_T,_V}, Acc) -> [K | Acc] end,
+        [],
+        KeyValues
+      );
+    error ->
+      none
+  end.
 
 %% @doc List direct subsections of a section.
 
 -spec sections(section(), config()) ->
-  [key()].
+  [key()] | none.
 
-sections(_Path, _Config) ->
-  'TODO'.
+sections(Section, {toml, Store} = _Config) ->
+  case dict:find(Section, Store) of
+    {ok, {_KeyValues, SubSections}} -> SubSections;
+    error -> none
+  end.
 
 %% @doc Fold over keys of a section.
 
