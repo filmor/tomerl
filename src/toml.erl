@@ -22,7 +22,7 @@
 
 %%%---------------------------------------------------------------------------
 
--type config() :: term().
+-type config() :: {toml, term()}.
 
 -type section() :: [string()].
 
@@ -98,16 +98,63 @@ parse(String) ->
     {ok, Tokens, _EndLine} ->
       case toml_parser:parse(Tokens) of
         {ok, Result} ->
-          case toml_dict:build_store(Result) of
-            {ok, V} -> {ok, V};
-            {error, Reason} -> {error, {semantic, Reason}}
-          end;
+          build_config(Result);
         {error, {LineNumber, _ParserModule, _Message}} ->
           {error, {parse, LineNumber}}
       end;
     {error, {LineNumber, _LexerModule, _Message}, _} ->
       {error, {tokenize, LineNumber}}
   end.
+
+%%----------------------------------------------------------
+%% build_config() {{{
+
+%% @doc Convert AST coming from parser to a config representation.
+
+-spec build_config([term()]) ->
+  {ok, config()} | {error, {semantic, term()}}.
+
+build_config(Directives) ->
+  case toml_dict:build_store(Directives) of
+    {ok, Store} ->
+      EmptyConfig = dict:store([], empty_section(), dict:new()),
+      Config = toml_dict:fold(fun build_config/4, EmptyConfig, Store),
+      {ok, {toml, Config}};
+    {error, Reason} ->
+      {error, {semantic, Reason}}
+  end.
+
+%% @doc Fold workhorse for {@link build_config/1}.
+
+-spec build_config(section(), key(), section | value(), term()) ->
+  term().
+
+build_config(Section, Key, section = _Value, Config) ->
+  NewConfig = dict:update(
+    Section,
+    fun({Keys, SubSects}) ->
+      {dict:store(Key, section, Keys), [Key | SubSects]}
+    end,
+    Config
+  ),
+  dict:store(Section ++ [Key], empty_section(), NewConfig);
+build_config(Section, Key, {_T, _V} = Value, Config) ->
+  % NOTE: array value from `toml_dict' is compatible with this module
+  dict:update(
+    Section,
+    fun({Keys, SubSects}) -> {dict:store(Key, Value, Keys), SubSects} end,
+    Config
+  ).
+
+%% @doc Create a value for an empty section.
+
+empty_section() ->
+  KeyValues = dict:new(),
+  SubSections = [],
+  {KeyValues, SubSections}.
+
+%% }}}
+%%----------------------------------------------------------
 
 %%%---------------------------------------------------------------------------
 %%% explaining errors
