@@ -17,7 +17,7 @@
 
 -export_type([config/0, section/0, key/0, value/0]).
 -export_type([toml_datetime/0, toml_array/0, toml_object/0]).
--export_type([parse_error/0, line/0, semantic_error/0]).
+-export_type([parse_error/0, line/0]).
 
 %%%---------------------------------------------------------------------------
 
@@ -55,9 +55,7 @@
 
 -type line() :: pos_integer().
 
--type parse_error() :: {parse, line()} | {tokenize, line()} | semantic_error().
-
--type semantic_error() :: term().
+-type parse_error() :: {parse, line()} | {tokenize, line()} | {semantic, term()}.
 
 %%%---------------------------------------------------------------------------
 %%% parser wrappers
@@ -100,8 +98,8 @@ parse(String) ->
 -spec format_error(Reason :: term()) ->
   string().
 
-%format_error({semantic, Reason}) ->
-%  toml_dict:format_error(Reason);
+format_error({semantic, Reason}) ->
+  toml_dict:format_error(Reason);
 format_error({parse, Line}) ->
   "syntax error in line " ++ integer_to_list(Line);
 format_error({tokenize, Line}) ->

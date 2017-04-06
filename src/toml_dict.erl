@@ -6,7 +6,6 @@
 %%%
 %%% @todo array tables
 %%% @todo precise error reporting
-%%% @todo `format_error()' function
 %%% @end
 %%%---------------------------------------------------------------------------
 
@@ -14,7 +13,7 @@
 
 -export([build_store/1]).
 -export([fold/3]).
-%-export([format_error/1]).
+-export([format_error/1]).
 
 -export_type([store/0, store_array/0]).
 -export_type([jsx_object/0, jsx_list/0, jsx_value/0, scalar/0, datetime/0]).
@@ -397,8 +396,21 @@ typeof({inline_table, _} = _Value) -> object.
 %%% error formatting
 %%%---------------------------------------------------------------------------
 
-%format_error(_Reason) ->
-%  'TODO'.
+%% @doc Prepare a human-readable error message out of an error.
+
+-spec format_error(term()) ->
+  string().
+
+%% errors extracted directly from `erlang:throw()'
+format_error({duplicate, PrevLine} = _Reason) ->
+  "key already defined in line " ++ integer_to_list(PrevLine);
+format_error({type_mismatch, PrevLine} = _Reason) ->
+  "section defined with a different type in line " ++ integer_to_list(PrevLine);
+format_error(array_type_mismatch = _Reason) ->
+  "array elements are of different type";
+
+format_error(_Reason) ->
+  "unrecognized error".
 
 %%%---------------------------------------------------------------------------
 %%% value store traversal
