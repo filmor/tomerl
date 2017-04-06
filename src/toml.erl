@@ -15,21 +15,22 @@
 -export([keys/2, sections/2, foldk/4, folds/4]).
 %-export([to_list/1, to_list/2]).
 
--export_type([config/0, section/0, key/0, value/0]).
--export_type([datetime/0, toml_array/0]).
+-export_type([config/0, section/0, key/0, toml_value/0]).
+-export_type([toml_array/0, datetime/0]).
 -export_type([jsx_object/0, jsx_list/0, jsx_value/0]).
--export_type([validate_fun/0, validate_fun_return/0]).
--export_type([error/0]).
+-export_type([validate_fun/0, validate_fun_return/0, validate_error/0]).
+-export_type([toml_error/0]).
 
 %%%---------------------------------------------------------------------------
 
--type config() :: {toml, term()}.
+-opaque config() :: {toml, term()}.
+%% A tuple with atom `toml' being its first element.
 
 -type section() :: [string()].
 
 -type key() :: string().
 
--type value() ::
+-type toml_value() ::
     {string, string()}
   | {integer, integer()}
   | {float, float()}
@@ -69,18 +70,18 @@
 %% `"[+-]HH:MM"'.
 
 -type validate_fun() ::
-  fun((section(), key(), value(), Arg :: term()) -> validate_fun_return()).
+  fun((section(), key(), toml_value(), Arg :: term()) -> validate_fun_return()).
 
 -type validate_fun_return() :: ok | {ok, Data :: term()} | ignore
                              | {error, validate_error()}.
 
 -type validate_error() :: term().
 
--type error() :: {parse, Line :: pos_integer()}
-               | {tokenize, Line :: pos_integer()}
-               | {semantic, term()}
-               | {bad_return, Where :: term(), Result :: term()}
-               | {validate, Where :: term(), validate_error()}.
+-type toml_error() :: {parse, Line :: pos_integer()}
+                    | {tokenize, Line :: pos_integer()}
+                    | {semantic, term()}
+                    | {bad_return, Where :: term(), Result :: term()}
+                    | {validate, Where :: term(), validate_error()}.
 
 %%%---------------------------------------------------------------------------
 %%% parser wrappers
@@ -89,7 +90,7 @@
 %% @doc Parse a TOML file on disk.
 
 -spec read_file(file:filename()) ->
-  {ok, config()} | {error, ReadError | error()}
+  {ok, config()} | {error, ReadError | toml_error()}
   when ReadError :: file:posix() | badarg | terminated | system_limit.
 
 read_file(File) ->
@@ -101,7 +102,7 @@ read_file(File) ->
 %% @doc Parse a TOML file on disk.
 
 -spec read_file(file:filename(), {validate_fun(), Arg :: term()}) ->
-  {ok, config()} | {error, ReadError | error()}
+  {ok, config()} | {error, ReadError | toml_error()}
   when ReadError :: file:posix() | badarg | terminated | system_limit.
 
 read_file(File, {Fun, _Arg} = Validate) when is_function(Fun, 4) ->
@@ -113,7 +114,7 @@ read_file(File, {Fun, _Arg} = Validate) when is_function(Fun, 4) ->
 %% @doc Parse a TOML config from a string.
 
 -spec parse(string() | binary() | iolist()) ->
-  {ok, config()} | {error, error()}.
+  {ok, config()} | {error, toml_error()}.
 
 parse(String) ->
   parse(String, {fun accept_all/4, []}).
@@ -121,7 +122,7 @@ parse(String) ->
 %% @doc Parse a TOML config from a string.
 
 -spec parse(string() | binary() | iolist(), {validate_fun(), Arg :: term()}) ->
-  {ok, config()} | {error, error()}.
+  {ok, config()} | {error, toml_error()}.
 
 parse(String, {Fun, Arg} = _Validate) when is_function(Fun, 4) ->
   % the grammar assumes that the input ends with newline character
@@ -139,7 +140,7 @@ parse(String, {Fun, Arg} = _Validate) when is_function(Fun, 4) ->
 
 %% @doc Default validation function that accepts all values.
 
--spec accept_all(section(), key(), value(), term()) ->
+-spec accept_all(section(), key(), toml_value(), term()) ->
   ok.
 
 accept_all(_Section, _Key, _Value, _Arg) ->
@@ -174,7 +175,7 @@ build_config(Directives, Fun, Arg) ->
 
 %% @doc Fold workhorse for {@link build_config/1}.
 
--spec build_config(section(), key(), section | value(), term()) ->
+-spec build_config(section(), key(), section | toml_value(), term()) ->
   term().
 
 build_config(Section, Key, section = _Value, {ValidateFun, Arg, Config}) ->
@@ -261,7 +262,7 @@ format_error(Reason) ->
 %% @doc Get tagged value from config.
 
 -spec get_value(section(), key(), config()) ->
-  value() | none | section.
+  toml_value() | none | section.
 
 get_value(Section, Key, {toml, Store} = _Config) ->
   case dict:find(Section, Store) of
@@ -282,8 +283,8 @@ get_value(Section, Key, {toml, Store} = _Config) ->
 %% @doc Get tagged value from config.
 %%   If the key doesn't exist, specified default is returned.
 
--spec get_value(section(), key(), config(), value()) ->
-  value() | section.
+-spec get_value(section(), key(), config(), toml_value()) ->
+  toml_value() | section.
 
 get_value(Section, Key, {toml, _} = Config, Default) ->
   case get_value(Section, Key, Config) of
@@ -341,7 +342,7 @@ sections(Section, {toml, Store} = _Config) ->
 
 -spec foldk(section(), Fun, AccIn, config()) ->
   AccOut
-  when Fun :: fun((section(), key(), value(), AccIn) -> AccOut),
+  when Fun :: fun((section(), key(), toml_value(), AccIn) -> AccOut),
        AccIn :: term(),
        AccOut :: term().
 
