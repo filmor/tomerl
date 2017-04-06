@@ -13,7 +13,7 @@
 %% data accessors
 -export([get_value/3, get_value/4, exists/2, exists/3]).
 -export([keys/2, sections/2, foldk/4, folds/4]).
--export([set_value/4, set_default/4, delete/2, delete/3, update/4, update/5]).
+%-export([to_list/1, to_list/2]).
 
 -export_type([config/0, section/0, key/0, value/0]).
 -export_type([datetime/0, toml_array/0]).
@@ -283,61 +283,6 @@ folds(_Path, _Fun, _Acc, _Config) ->
 
 %to_list(_Path, _Config) ->
 %  'TODO'.
-
-%% @doc Set (replace) a value for a key.
-%%   Sections get replaced, too.
-
--spec set_value(section(), key(), value(), config()) ->
-  {OldValue :: none | value(), NewConfig :: config()}.
-
-set_value(_Path, _Key, _Value, _Config) ->
-  'TODO'.
-
-%% @doc Set a value for an undefined key.
-%%   If the key has a value (or there's a section of this name), nothing
-%%   happens.
-
--spec set_default(section(), key(), value(), config()) ->
-  {set | exists, NewConfig :: config()}.
-
-set_default(_Path, _Key, _Value, _Config) ->
-  'TODO'.
-
-%% @doc Delete a section.
-
--spec delete(section(), config()) ->
-  config().
-
-delete(_Path, _Config) ->
-  'TODO'.
-
-%% @doc Unset a specific key from a section.
-
--spec delete(section(), key(), config()) ->
-  {OldValue :: none | value(), NewConfig :: config()}.
-
-delete(_Path, _Key, _Config) ->
-  'TODO'.
-
-%% @doc Update a value of a key using a specified function.
-%%
-%%   Function dies (`erlang:error()') if the key is not set.
-
--spec update(section(), key(), fun(), config()) ->
-  {OldValue :: value(), NewConfig :: config()}.
-
-update(_Path, _Key, _Fun, _Config) ->
-  'TODO'.
-
-%% @doc Update a value of a key using a specified function.
-%%
-%%   If the key is not set, the `Fun' function is called with `Initial' value.
-
--spec update(section(), key(), fun(), term(), config()) ->
-  {OldValue :: none | value(), NewConfig :: config()}.
-
-update(_Path, _Key, _Fun, _Initial, _Config) ->
-  'TODO'.
 
 %%%---------------------------------------------------------------------------
 %%% vim:ft=erlang:foldmethod=marker
