@@ -260,21 +260,53 @@ sections(Section, {toml, Store} = _Config) ->
     error -> none
   end.
 
-%% @doc Fold over keys of a section.
+%% @doc Traverse all the values set in a section.
 
--spec foldk(section(), fun(), term(), config()) ->
-  term().
+-spec foldk(section(), Fun, AccIn, config()) ->
+  AccOut
+  when Fun :: fun((section(), key(), value(), AccIn) -> AccOut),
+       AccIn :: term(),
+       AccOut :: term().
 
-foldk(_Section, _Fun, _Acc, {toml, _Store} = _Config) ->
-  'TODO'.
+foldk(Section, Fun, Acc, {toml, Store} = _Config) when is_function(Fun, 4) ->
+  case dict:find(Section, Store) of
+    {ok, {KeyValues, _SubSections}} ->
+      TravAcc = {Section, Fun, Acc},
+      {_, _, Result} = dict:fold(fun traverse_keys/3, TravAcc, KeyValues),
+      Result;
+    error ->
+      Acc
+  end.
 
-%% @doc Fold over direct subsections of a section.
+%% @doc Workhorse for {@link foldk/4}.
 
--spec folds(section(), fun(), term(), config()) ->
-  term().
+traverse_keys(Key, Value, {Section, Fun, FunAcc}) ->
+  NewFunAcc = Fun(Section, Key, Value, FunAcc),
+  {Section, Fun, NewFunAcc}.
 
-folds(_Section, _Fun, _Acc, {toml, _Store} = _Config) ->
-  'TODO'.
+%% @doc Traverse the direct subsections of a section.
+
+-spec folds(section(), Fun, AccIn, Config :: config()) ->
+  AccOut
+  when Fun :: fun((config(), section(), AccIn) -> AccOut),
+       AccIn :: term(),
+       AccOut :: term().
+
+folds(Section, Fun, Acc, {toml, Store} = Config) when is_function(Fun, 3) ->
+  case dict:find(Section, Store) of
+    {ok, {_KeyValues, SubSections}} ->
+      traverse_sections(SubSections, Section, Config, Fun, Acc);
+    error ->
+      Acc
+  end.
+
+%% @doc Workhorse for {@link folds/4}.
+
+traverse_sections([] = _SubSections, _Section, _Config, _Fun, Acc) ->
+  Acc;
+traverse_sections([Name | Rest] = _SubSections, Section, Config, Fun, Acc) ->
+  NewAcc = Fun(Config, Section ++ [Name], Acc),
+  traverse_sections(Rest, Section, Config, Fun, NewAcc).
 
 %to_list({toml, Store} = _Config) ->
 %  'TODO'.
