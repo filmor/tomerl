@@ -87,7 +87,7 @@
 
 %% }}}
 %%----------------------------------------------------------
-%% JSX-like types {{{
+%% jsx-like types {{{
 
 -type jsx_object() :: [{}] | [{binary(), jsx_value()}, ...].
 
@@ -96,7 +96,7 @@
 -type jsx_value() :: binary() | scalar() | jsx_list() | jsx_object().
 %% NOTE: `string()' doesn't occur, there's `binary()' instead.
 %%
-%% NOTE: `datetime()' is not quite JSX-compatible.
+%% NOTE: `datetime()' is not quite jsx-compatible.
 
 %% }}}
 %%----------------------------------------------------------
@@ -334,7 +334,7 @@ build_object({inline_table, KeyValues} = _Object) ->
 %%
 %%   Array of arrays is converted recursively.
 %%
-%%   Array of objects is converted to list of JSX-like structures.
+%%   Array of objects is converted to list of jsx-like structures.
 
 -spec build_array(ast_array()) ->
   store_array().
@@ -360,7 +360,7 @@ build_array({array, [HE | Rest] = Elements} = _Value) ->
 %%----------------------------------------------------------
 %% store_to_jsx() {{{
 
-%% @doc Convert a value store to a JSX-like structure.
+%% @doc Convert a value store to a jsx-like structure.
 
 -spec store_to_jsx(store()) ->
   jsx_object().
@@ -391,13 +391,13 @@ store_to_jsx_fold(K, {_Line, T, V}, Acc) ->
   end,
   [{Key, Value} | Acc].
 
-%% @doc Convert a store representation of an array to a JSX-like structure.
+%% @doc Convert a store representation of an array to a jsx-like structure.
 
 -spec array_to_jsx(store_array()) ->
   jsx_list().
 
 array_to_jsx({object, Object} = _Array) ->
-  % objects in an array are already JSX-like structures (see build_array/1)
+  % objects in an array are already jsx-like structures (see build_array/1)
   Object;
 array_to_jsx({array, Arrays} = _Array) ->
   [array_to_jsx(A) || A <- Arrays];
@@ -405,7 +405,7 @@ array_to_jsx({string, Strings} = _Array) ->
   [unicode:characters_to_binary(S) || S <- Strings];
 array_to_jsx({_Type, Values} = _Array) ->
   % empty, int, float, bool, datetime stay as they are (though datetime is not
-  % quite JSX-compatible)
+  % quite jsx-compatible)
   Values.
 
 %% }}}
