@@ -4,6 +4,9 @@
 %%%   Utility functions to convert AST coming from parser to a set of nested
 %%%   dictionaries.
 %%%
+%%%   This is the place where semantic-level parts of TOML specification are
+%%%   implemented.
+%%%
 %%% @todo precise error reporting
 %%% @end
 %%%---------------------------------------------------------------------------
