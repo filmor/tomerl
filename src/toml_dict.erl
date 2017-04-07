@@ -481,6 +481,10 @@ fold(Fun, AccIn, Store) when is_function(Fun, 4) ->
 %% @doc Workhorse for {@link fold/3}.
 %%   Intended to be passed to {@link dict:fold/3}.
 
+-spec dict_fold_traverse(store_key(), store_value(),
+                         {fun(), [string()], term()}) ->
+  {fun(), [string()], term()}.
+
 dict_fold_traverse(Key, {_Line, key, {array, Values}}, {Fun, Path, Acc}) ->
   NewAcc = Fun(Path, Key, {array, Values}, Acc),
   {Fun, Path, NewAcc};
