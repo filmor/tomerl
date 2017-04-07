@@ -76,6 +76,7 @@
   | {line(), key, {array, store_array()}}
   | {line(), object, store()}
   | {line(), section, store()}
+  | {line(), auto_section, store()}
   | {line(), array_section, [store()]}.
 
 -type store_array() ::
@@ -189,6 +190,9 @@ set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
     {ok, {PrevLine, section, SubStore}} ->
       NewSubStore = set(Rest, Key, Value, Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
+    {ok, {PrevLine, auto_section, SubStore}} ->
+      NewSubStore = set(Rest, Key, Value, Line, SubStore),
+      dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
       NewSubStore = set(Rest, Key, Value, Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
@@ -214,9 +218,11 @@ set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
 
 add_section([Name] = _SectionName, Line, Store) ->
   case dict:find(Name, Store) of
-    {ok, {_PrevLine, section, _SubStore}} ->
-      % OK, already defined
-      Store;
+    {ok, {PrevLine, section, _SubStore}} ->
+      erlang:throw({duplicate, PrevLine}); % TODO: different error?
+    {ok, {_PrevLine, auto_section, SubStore}} ->
+      % automatically defined section, change its type and definition line
+      dict:store(Name, {Line, section, SubStore}, Store);
     {ok, {PrevLine, array_section, _SubStore}} ->
       erlang:throw({type_mismatch, PrevLine}); % TODO: different error
     {ok, {PrevLine, object, _PrevValue}} ->
@@ -234,6 +240,9 @@ add_section([Name | Rest] = _SectionName, Line, Store) ->
     {ok, {PrevLine, section, SubStore}} ->
       NewSubStore = add_section(Rest, Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
+    {ok, {PrevLine, auto_section, SubStore}} ->
+      NewSubStore = add_section(Rest, Line, SubStore),
+      dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
       NewSubStore = add_section(Rest, Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
@@ -261,6 +270,8 @@ add_array_section([Name] = _SectionName, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, _SubStore}} ->
       erlang:throw({type_mismatch, PrevLine}); % TODO: different error
+    {ok, {PrevLine, auto_section, _SubStore}} ->
+      erlang:throw({type_mismatch, PrevLine}); % TODO: different error
     {ok, {PrevLine, array_section, SubStores}} ->
       NewSubStoreList = [empty_store() | SubStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
@@ -277,6 +288,9 @@ add_array_section([Name | Rest] = _SectionName, Line, Store) ->
     {ok, {PrevLine, section, SubStore}} ->
       NewSubStore = add_array_section(Rest, Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
+    {ok, {PrevLine, auto_section, SubStore}} ->
+      NewSubStore = add_array_section(Rest, Line, SubStore),
+      dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
       NewSubStore = add_array_section(Rest, Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
@@ -384,7 +398,7 @@ store_to_jsx_fold(K, {_Line, T, V}, Acc) ->
   Value = case V of
     Stores when T == array_section ->
       lists:reverse([store_to_jsx(S) || S <- Stores]);
-    Store when T == section; T == object ->
+    Store when T == section; T == auto_section; T == object ->
       store_to_jsx(Store);
     {array, Array} ->
       array_to_jsx(Array);
@@ -500,6 +514,11 @@ dict_fold_traverse(Key, {_Line, object, SubStore}, {Fun, Path, Acc}) ->
     dict:fold(fun dict_fold_traverse/3, {Fun, Path ++ [Key], NewAcc}, SubStore),
   {Fun, Path, NewAcc1};
 dict_fold_traverse(Key, {_Line, section, SubStore}, {Fun, Path, Acc}) ->
+  NewAcc = Fun(Path, Key, section, Acc),
+  {_, _, NewAcc1} =
+    dict:fold(fun dict_fold_traverse/3, {Fun, Path ++ [Key], NewAcc}, SubStore),
+  {Fun, Path, NewAcc1};
+dict_fold_traverse(Key, {_Line, auto_section, SubStore}, {Fun, Path, Acc}) ->
   NewAcc = Fun(Path, Key, section, Acc),
   {_, _, NewAcc1} =
     dict:fold(fun dict_fold_traverse/3, {Fun, Path ++ [Key], NewAcc}, SubStore),
