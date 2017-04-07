@@ -4,6 +4,29 @@ TOML parser for Erlang
 `toml` is an Erlang library application for parsing [TOML][toml] configuration
 language. It supports parsing 0.4.0 version of the TOML specification.
 
+Since TOML is a format for configuration files instead of general purpose
+serialization, `toml` library focuses on reading the configuration parameters.
+
+`toml:parse/2` and `toml:read_file/2` allow user to provide a validation
+callback, which can check correctness of a value (e.g. if a listen address in
+<i>listen="host:port"</i> has proper format) and even convert such values to
+a usable Erlang data structure. All this happens at the time of reading
+a configuration file, so any errors can be rejected in uniform manner.
+
+In smaller scale, `toml:get_value/3` returns values as tuples tagged with
+value type. This allows to fail early and with clear error on an obviously
+invalid parameter:
+
+    # [spool]
+    # directory = 1024
+    {string, SpoolDir} = toml:get_value(["spool"], "directory", Config).
+
+Configuration usually consists of flags and parameters and not of complex,
+nested data structures, so `toml` leans towards simple sections (or
+<i>tables</i>, how TOML calls them) and simple access to values in them.
+Still, all the TOML specification is supported, so nested structures are
+available.
+
 Usage example
 -------------
 
