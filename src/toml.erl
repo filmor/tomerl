@@ -1,5 +1,6 @@
 %%%---------------------------------------------------------------------------
 %%% @doc
+%%%   TOML parser module.
 %%% @end
 %%%---------------------------------------------------------------------------
 
@@ -22,13 +23,20 @@
 -export_type([toml_error/0]).
 
 %%%---------------------------------------------------------------------------
+%%% data types
+
+%%----------------------------------------------------------
+%% main types {{{
 
 -opaque config() :: {toml, term()}.
 %% A tuple with atom `toml' being its first element.
 
 -type section() :: [string()].
+%% Name of a section ("table" in TOML's terms). Root section is denoted by
+%% empty list (`[]').
 
 -type key() :: string().
+%% Name of a value in a section.
 
 -type toml_value() ::
     {string, string()}
@@ -38,6 +46,18 @@
   | {datetime, datetime()}
   | {array, toml_array()}
   | {data, term()}.
+%% Value stored under {@link key()}, along with its type.
+%%
+%% Custom Erlang structure returned by validation function ({@link
+%% validate_fun()}) is denoted by {@type @{data, Data@}}.
+%%
+%% Array of values is doubly typed, first as an array, and then with data type
+%% of its content, e.g. `{array, {string, ["one", "two", "three"]}}'. See
+%% {@link toml_array()} for details.
+
+%% }}}
+%%----------------------------------------------------------
+%% auxiliary types {{{
 
 -type toml_array() ::
     {empty, []}
@@ -48,10 +68,23 @@
   | {datetime, [datetime(), ...]}
   | {array, [toml_array(), ...]}
   | {object, [jsx_object(), ...]}.
+%% Representation of array's content.
+
+-type datetime() ::
+    {datetime, calendar:datetime(), TZ :: string()}
+  | {datetime, calendar:datetime()}
+  | {date, calendar:date()}
+  | {time, calendar:time()}.
+%% RFC 3339 timestamp (with or without timezone), date, or time.
+%%
+%% `TZ' is either a `"Z"' (the same as `"+00:00"') or has format
+%% `"[+-]HH:MM"'.
 
 -type jsx_object() :: [{}] | [{binary(), jsx_value()}, ...].
+%% Object (inline section/table) representation, jsx-style.
 
 -type jsx_list() :: [jsx_value()].
+%% Array representation, jsx-style.
 
 -type jsx_value() :: binary()
                    | integer()
@@ -60,28 +93,48 @@
                    | datetime()
                    | jsx_list()
                    | jsx_object().
+%% Arbitrary value (scalar/array/object), jsx-style. {@type datetime()} is not
+%% really jsx-compatible, and there's no `null'.
 
--type datetime() ::
-    {datetime, calendar:datetime(), TZ :: string()}
-  | {datetime, calendar:datetime()}
-  | {date, calendar:date()}
-  | {time, calendar:time()}.
-%% `TZ' is either a `"Z"' (the same as `"+00:00"') or has format
-%% `"[+-]HH:MM"'.
+%% }}}
+%%----------------------------------------------------------
+%% validation function {{{
 
 -type validate_fun() ::
   fun((section(), key(), toml_value(), Arg :: term()) -> validate_fun_return()).
+%% Key validation callback. This callback is specified at configuration
+%% parsing time and has a chance to further verify validity of a value or even
+%% convert it already to its intended form, e.g. listen address
+%% `"<host>:<port>"' can be immediately converted to `{Host,Port}' tuple.
 
 -type validate_fun_return() :: ok | {ok, Data :: term()} | ignore
                              | {error, validate_error()}.
+%% Expected return values from {@type validate_fun()}.
+%%
+%% {@type @{ok, Data@}} results in the {@type toml_value()} of `{data, Data}'.
+%% See {@link get_value/3}.
+%%
+%% {@type @{error, Reason :: validate_error()@}} is reported by {@link
+%% read_file/2} and {@link parse/2} as {@type @{error, @{validate, Where,
+%% Reason@}@}}.
 
 -type validate_error() :: term().
+%% Error returned by {@type validate_fun()}. See {@type validate_fun_return()}
+%% for details.
 
--type toml_error() :: {parse, Line :: pos_integer()}
-                    | {tokenize, Line :: pos_integer()}
+%% }}}
+%%----------------------------------------------------------
+%% errors {{{
+
+-type toml_error() :: {tokenize, Line :: pos_integer()}
+                    | {parse, Line :: pos_integer()}
                     | {semantic, term()}
                     | {bad_return, Where :: term(), Result :: term()}
                     | {validate, Where :: term(), validate_error()}.
+%% Error in processing TOML.
+
+%% }}}
+%%----------------------------------------------------------
 
 %%%---------------------------------------------------------------------------
 %%% parser wrappers
@@ -100,6 +153,10 @@ read_file(File) ->
   end.
 
 %% @doc Parse a TOML file on disk.
+%%
+%%   Each of the keys in the file is passed through a validation callback that
+%%   can accept the key, reject it, make it skipped, or further parse its
+%%   value for later retrieval.
 
 -spec read_file(file:filename(), {validate_fun(), Arg :: term()}) ->
   {ok, config()} | {error, ReadError | toml_error()}
@@ -120,6 +177,10 @@ parse(String) ->
   parse(String, {fun accept_all/4, []}).
 
 %% @doc Parse a TOML config from a string.
+%%
+%%   Each of the keys in the config is passed through a validation callback
+%%   that can accept the key, reject it, make it skipped, or further parse its
+%%   value for later retrieval.
 
 -spec parse(string() | binary() | iolist(), {validate_fun(), Arg :: term()}) ->
   {ok, config()} | {error, toml_error()}.
