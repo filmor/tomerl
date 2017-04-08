@@ -6,3 +6,5 @@
 /doc/*.png
 /doc/*.html
 /doc/*.css
+/.erlang.mk
+/toml.d

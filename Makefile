@@ -9,27 +9,19 @@ DIALYZER_PLT = ~/.dialyzer_plt $(wildcard .*.plt)
 endif
 DIALYZER_OPTS = --no_check_plt $(if $(DIALYZER_PLT),--plts $(DIALYZER_PLT))
 
-DIAGRAMS = $(basename $(notdir $(wildcard diagrams/*.diag)))
-DIAGRAMS_SVG = $(foreach D,$(DIAGRAMS),doc/images/$D.svg)
+#-----------------------------------------------------------------------------
+
+PROJECT = toml
+ERLC_OPTS =
+
+include erlang.mk
+
+src/toml_lexer.erl::
+	$(verbose)grep -q @private $@ || sed -i -e '1i%%% @private' $@
 
 #-----------------------------------------------------------------------------
 
-.PHONY: all clean
-
-all: compile edoc
-
-clean:
-	rebar clean
-
-#-----------------------------------------------------------------------------
-
-.PHONY: compile build dialyzer
-
-build: compile
-
-compile:
-	rebar $@
-
+.PHONY: dialyzer
 YECC_ERL_FILES = $(subst .yrl,.erl,$(subst .xrl,.erl,$(wildcard src/*.[xy]rl)))
 ERL_SOURCE_FILES = $(filter-out $(YECC_ERL_FILES),$(wildcard src/*.erl))
 dialyzer:
@@ -38,12 +30,8 @@ dialyzer:
 
 #-----------------------------------------------------------------------------
 
-.PHONY: doc edoc
-
+.PHONY: doc
 doc: edoc
-
-edoc:
-	rebar doc
 
 #-----------------------------------------------------------------------------
 # vim:ft=make
