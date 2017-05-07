@@ -118,7 +118,7 @@
 -type error_data_location() :: [pos_integer() | string()].
 
 -type semantic_error() ::
-    {descent, key, error_location()}
+    {auto_section, key, error_location()}
   | {section, key | section | array_section, error_location()}
   | {array_section, key | section | auto_section, error_location()}
   | {key, key | section | auto_section | array_section, error_location()}
@@ -279,10 +279,10 @@ add_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
       ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
-      erlang:throw({descent, key, ErrorLocation});
+      erlang:throw({auto_section, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
       ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
-      erlang:throw({descent, key, ErrorLocation});
+      erlang:throw({auto_section, key, ErrorLocation});
     error ->
       NewSubStore = add_section(Rest, [Name | ErrorPath], Line, empty_store()),
       dict:store(Name, {Line, auto_section, NewSubStore}, Store)
@@ -332,10 +332,10 @@ add_array_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
       ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
-      erlang:throw({descent, key, ErrorLocation});
+      erlang:throw({auto_section, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
       ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
-      erlang:throw({descent, key, ErrorLocation});
+      erlang:throw({auto_section, key, ErrorLocation});
     error ->
       NewSubStore = add_array_section(Rest, [Name | ErrorPath], Line,
                                       empty_store()),
