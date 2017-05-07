@@ -135,12 +135,12 @@ build_store(Directives) ->
 
 build_store([{table, Line, SectionName} | Rest] = _Directives,
             _CurrentSection, Store) ->
-  NewValues = add_section(SectionName, Line, Store),
+  NewValues = add_section(SectionName, [], Line, Store),
   build_store(Rest, SectionName, NewValues);
 
 build_store([{array_table, Line, SectionName} | Rest] = _Directives,
             _CurrentSection, Store) ->
-  NewValues = add_array_section(SectionName, Line, Store),
+  NewValues = add_array_section(SectionName, [], Line, Store),
   build_store(Rest, SectionName, NewValues);
 
 build_store([{key, Line, Key, Value} | Rest] = _Directives,
@@ -211,10 +211,10 @@ set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
 
 %% @doc Add a new section to value store.
 
--spec add_section(ast_section_name(), line(), store()) ->
+-spec add_section(ast_section_name(), [string()], line(), store()) ->
   store().
 
-add_section([Name] = _SectionName, Line, Store) ->
+add_section([Name] = _SectionName, _ErrorPos, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, _SubStore}} ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error?
@@ -233,16 +233,16 @@ add_section([Name] = _SectionName, Line, Store) ->
       dict:store(Name, {Line, section, NewSubStore}, Store)
   end;
 
-add_section([Name | Rest] = _SectionName, Line, Store) ->
+add_section([Name | Rest] = _SectionName, ErrorPos, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, SubStore}} ->
-      NewSubStore = add_section(Rest, Line, SubStore),
+      NewSubStore = add_section(Rest, [Name | ErrorPos], Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
     {ok, {PrevLine, auto_section, SubStore}} ->
-      NewSubStore = add_section(Rest, Line, SubStore),
+      NewSubStore = add_section(Rest, [Name | ErrorPos], Line, SubStore),
       dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
-      NewSubStore = add_section(Rest, Line, SubStore),
+      NewSubStore = add_section(Rest, [Name | ErrorPos], Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
@@ -250,7 +250,7 @@ add_section([Name | Rest] = _SectionName, Line, Store) ->
     {ok, {PrevLine, key, _PrevValue}} ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     error ->
-      NewSubStore = add_section(Rest, Line, empty_store()),
+      NewSubStore = add_section(Rest, [Name | ErrorPos], Line, empty_store()),
       dict:store(Name, {Line, auto_section, NewSubStore}, Store)
   end.
 
@@ -260,10 +260,10 @@ add_section([Name | Rest] = _SectionName, Line, Store) ->
 
 %% @doc Add a new section to value store.
 
--spec add_array_section(ast_section_name(), line(), store()) ->
+-spec add_array_section(ast_section_name(), [string()], line(), store()) ->
   store().
 
-add_array_section([Name] = _SectionName, Line, Store) ->
+add_array_section([Name] = _SectionName, _ErrorPos, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, _SubStore}} ->
       erlang:throw({type_mismatch, PrevLine}); % TODO: different error
@@ -280,16 +280,16 @@ add_array_section([Name] = _SectionName, Line, Store) ->
       dict:store(Name, {Line, array_section, [empty_store()]}, Store)
   end;
 
-add_array_section([Name | Rest] = _SectionName, Line, Store) ->
+add_array_section([Name | Rest] = _SectionName, ErrorPos, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, SubStore}} ->
-      NewSubStore = add_array_section(Rest, Line, SubStore),
+      NewSubStore = add_array_section(Rest, [Name | ErrorPos], Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
     {ok, {PrevLine, auto_section, SubStore}} ->
-      NewSubStore = add_array_section(Rest, Line, SubStore),
+      NewSubStore = add_array_section(Rest, [Name | ErrorPos], Line, SubStore),
       dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
-      NewSubStore = add_array_section(Rest, Line, SubStore),
+      NewSubStore = add_array_section(Rest, [Name | ErrorPos], Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
@@ -297,7 +297,8 @@ add_array_section([Name | Rest] = _SectionName, Line, Store) ->
     {ok, {PrevLine, key, _PrevValue}} ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     error ->
-      NewSubStore = add_array_section(Rest, Line, empty_store()),
+      NewSubStore = add_array_section(Rest, [Name | ErrorPos], Line,
+                                      empty_store()),
       dict:store(Name, {Line, auto_section, NewSubStore}, Store)
   end.
 
