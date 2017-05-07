@@ -107,6 +107,20 @@
 
 %% }}}
 %%----------------------------------------------------------
+%% errors {{{
+
+-type error_location() ::
+  {Path :: [string(), ...], CurLine :: line(), PrevLine :: line()}.
+
+% this error type doesn't cover inline sections (objects) and inline arrays
+-type error() ::
+    {descent, key, error_location()}
+  | {section, key | section | array_section, error_location()}
+  | {array_section, key | section | auto_section, error_location()}
+  | {key, key | section | auto_section | array_section, error_location()}.
+
+%% }}}
+%%----------------------------------------------------------
 
 %%%---------------------------------------------------------------------------
 
@@ -145,7 +159,7 @@ build_store([{array_table, Line, SectionName} | Rest] = _Directives,
 
 build_store([{key, Line, Key, Value} | Rest] = _Directives,
             CurrentSection, Store) ->
-  NewValues = set(CurrentSection, Key, Value, Line, Store),
+  NewValues = set(CurrentSection, CurrentSection, Key, Value, Line, Store),
   build_store(Rest, CurrentSection, NewValues);
 
 build_store([] = _Directives, _CurrentSection, Store) ->
@@ -168,18 +182,23 @@ empty_store() ->
 
 %% }}}
 %%----------------------------------------------------------
-%% set(SectionName, Key, Value, Line, Store) {{{
+%% set(SectionName, ErrorPath, Key, Value, Line, Store) {{{
 
 %% @doc Set a value under a specified key in specified section in value store.
 
--spec set([] | ast_section_name(), ast_key(), ast_value(), line(), store()) ->
+-spec set([] | ast_section_name(), [string()],
+          ast_key(), ast_value(), line(), store()) ->
   store().
 
-set([] = _SectionName, Key, Value, Line, Store) ->
+set([] = _SectionName, ErrorPath, Key, Value, Line, Store) ->
   ValueType = typeof(Value),
   case dict:find(Key, Store) of
-    {ok, {PrevLine, _Type, _Value}} ->
-      erlang:throw({duplicate, PrevLine});
+    {ok, {PrevLine, object, _Value}} ->
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({key, key, ErrorLocation});
+    {ok, {PrevLine, Type, _Value}} when Type /= object ->
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({key, Type, ErrorLocation});
     error when ValueType == object ->
       dict:store(Key, {Line, object, build_object(Value)}, Store);
     error when ValueType == array ->
@@ -188,19 +207,19 @@ set([] = _SectionName, Key, Value, Line, Store) ->
       dict:store(Key, {Line, key, Value}, Store)
   end;
 
-set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
+set([Name | Rest] = _SectionName, ErrorPath, Key, Value, Line, Store) ->
   % XXX: descent here cannot encounter anything but sections, because the same
   % descent was already performed previously, when the section that this key
   % is in was opened
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, SubStore}} ->
-      NewSubStore = set(Rest, Key, Value, Line, SubStore),
+      NewSubStore = set(Rest, ErrorPath, Key, Value, Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
     {ok, {PrevLine, auto_section, SubStore}} ->
-      NewSubStore = set(Rest, Key, Value, Line, SubStore),
+      NewSubStore = set(Rest, ErrorPath, Key, Value, Line, SubStore),
       dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
-      NewSubStore = set(Rest, Key, Value, Line, SubStore),
+      NewSubStore = set(Rest, ErrorPath, Key, Value, Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store)
   end.
@@ -214,43 +233,49 @@ set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
 -spec add_section(ast_section_name(), [string()], line(), store()) ->
   store().
 
-add_section([Name] = _SectionName, _ErrorPos, Line, Store) ->
+add_section([Name] = _SectionName, ErrorPath, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, _SubStore}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error?
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({section, section, ErrorLocation});
     {ok, {_PrevLine, auto_section, SubStore}} ->
       % automatically defined section, change its type and definition line
       dict:store(Name, {Line, section, SubStore}, Store);
     {ok, {PrevLine, array_section, _SubStore}} ->
-      erlang:throw({type_mismatch, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({section, array_section, ErrorLocation});
     {ok, {PrevLine, object, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({section, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({section, key, ErrorLocation});
     error ->
       % not defined, add an empty section
       NewSubStore = empty_store(),
       dict:store(Name, {Line, section, NewSubStore}, Store)
   end;
 
-add_section([Name | Rest] = _SectionName, ErrorPos, Line, Store) ->
+add_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, SubStore}} ->
-      NewSubStore = add_section(Rest, [Name | ErrorPos], Line, SubStore),
+      NewSubStore = add_section(Rest, [Name | ErrorPath], Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
     {ok, {PrevLine, auto_section, SubStore}} ->
-      NewSubStore = add_section(Rest, [Name | ErrorPos], Line, SubStore),
+      NewSubStore = add_section(Rest, [Name | ErrorPath], Line, SubStore),
       dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
-      NewSubStore = add_section(Rest, [Name | ErrorPos], Line, SubStore),
+      NewSubStore = add_section(Rest, [Name | ErrorPath], Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({descent, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({descent, key, ErrorLocation});
     error ->
-      NewSubStore = add_section(Rest, [Name | ErrorPos], Line, empty_store()),
+      NewSubStore = add_section(Rest, [Name | ErrorPath], Line, empty_store()),
       dict:store(Name, {Line, auto_section, NewSubStore}, Store)
   end.
 
@@ -263,41 +288,47 @@ add_section([Name | Rest] = _SectionName, ErrorPos, Line, Store) ->
 -spec add_array_section(ast_section_name(), [string()], line(), store()) ->
   store().
 
-add_array_section([Name] = _SectionName, _ErrorPos, Line, Store) ->
+add_array_section([Name] = _SectionName, ErrorPath, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, _SubStore}} ->
-      erlang:throw({type_mismatch, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({array_section, section, ErrorLocation});
     {ok, {PrevLine, auto_section, _SubStore}} ->
-      erlang:throw({type_mismatch, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({array_section, auto_section, ErrorLocation});
     {ok, {PrevLine, array_section, SubStores}} ->
       NewSubStoreList = [empty_store() | SubStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({array_section, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({array_section, key, ErrorLocation});
     error ->
       dict:store(Name, {Line, array_section, [empty_store()]}, Store)
   end;
 
-add_array_section([Name | Rest] = _SectionName, ErrorPos, Line, Store) ->
+add_array_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, SubStore}} ->
-      NewSubStore = add_array_section(Rest, [Name | ErrorPos], Line, SubStore),
+      NewSubStore = add_array_section(Rest, [Name | ErrorPath], Line, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
     {ok, {PrevLine, auto_section, SubStore}} ->
-      NewSubStore = add_array_section(Rest, [Name | ErrorPos], Line, SubStore),
+      NewSubStore = add_array_section(Rest, [Name | ErrorPath], Line, SubStore),
       dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
-      NewSubStore = add_array_section(Rest, [Name | ErrorPos], Line, SubStore),
+      NewSubStore = add_array_section(Rest, [Name | ErrorPath], Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({descent, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      erlang:throw({descent, key, ErrorLocation});
     error ->
-      NewSubStore = add_array_section(Rest, [Name | ErrorPos], Line,
+      NewSubStore = add_array_section(Rest, [Name | ErrorPath], Line,
                                       empty_store()),
       dict:store(Name, {Line, auto_section, NewSubStore}, Store)
   end.
