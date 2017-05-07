@@ -20,7 +20,9 @@
 -export_type([toml_array/0, datetime/0]).
 -export_type([jsx_object/0, jsx_list/0, jsx_value/0]).
 -export_type([validate_fun/0, validate_fun_return/0, validate_error/0]).
--export_type([toml_error/0]).
+-export_type([toml_error/0, semantic_error/0]).
+-export_type([semerr_redefinition/0, semerr_inline/0]).
+-export_type([semerr_data_location/0, semerr_location/0]).
 
 %%%---------------------------------------------------------------------------
 %%% data types
@@ -128,10 +130,51 @@
 
 -type toml_error() :: {tokenize, Line :: pos_integer()}
                     | {parse, Line :: pos_integer()}
-                    | {semantic, term()}
+                    | {semantic, semantic_error()}
                     | {bad_return, Where :: term(), Result :: term()}
                     | {validate, Where :: term(), validate_error()}.
 %% Error in processing TOML.
+
+-type semantic_error() :: semerr_redefinition() | semerr_inline().
+%% Data-level error, meaning that data represented by TOML config is forbidden
+%% by TOML specification.
+
+-type semerr_redefinition() ::
+    {auto_section, key, semerr_location()}
+  | {section, key | section | array_section, semerr_location()}
+  | {array_section, key | section | auto_section, semerr_location()}
+  | {key, key | section | auto_section | array_section, semerr_location()}.
+%% Error signifying that a key/section was already defined, either explicitly
+%% or implicitly. The structure of the error follows convention of
+%% {@type @{Type, PreviousType, semerr_location()@}}.
+%%
+%% `auto_section' in `Type' means that there already exists a key with the
+%% same name as one of the parent sections of the current section.
+%%
+%% `auto_section' in `PreviousType' means that the section was not defined
+%% explicitly, but earlier sections restrict how it could look like (i.e.
+%% a subsection was already defined).
+
+-type semerr_inline() ::
+    {duplicate, Key :: string(), semerr_data_location(), semerr_location()}
+  | {type_mismatch, Pos :: pos_integer(),
+      semerr_data_location(), Path :: [string(), ...]}.
+%% Error signifying that inline object has two keys of the same name or an
+%% inline array has elements of different types.
+%%
+%% Note that type mismatch error, unlike all the other errors, doesn't carry
+%% line numbers, only the path portion of the location.
+
+-type semerr_data_location() ::
+  [pos_integer() | string()].
+%% Location of a semantic error in inline data (arrays and objects). The
+%% location is a path specified in terms appropriate for respective data
+%% types: key for objects, 1-based index for arrays.
+
+-type semerr_location() ::
+  {Path :: [string(), ...], CurLine :: pos_integer, PrevLine :: pos_integer()}.
+%% Location information of semantic error. `Path' is name of the offending
+%% section and, if applicable, key.
 
 %% }}}
 %%----------------------------------------------------------
