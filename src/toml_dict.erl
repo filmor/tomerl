@@ -186,6 +186,9 @@ set([] = _SectionName, Key, Value, Line, Store) ->
   end;
 
 set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
+  % XXX: descent here cannot encounter anything but sections, because the same
+  % descent was already performed previously, when the section that this key
+  % is in was opened
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, SubStore}} ->
       NewSubStore = set(Rest, Key, Value, Line, SubStore),
@@ -196,15 +199,7 @@ set([Name | Rest] = _SectionName, Key, Value, Line, Store) ->
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
       NewSubStore = set(Rest, Key, Value, Line, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
-      dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
-    {ok, {PrevLine, object, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
-    {ok, {PrevLine, key, _PrevValue}} ->
-      erlang:throw({duplicate, PrevLine}); % TODO: different error
-    error ->
-      NewSubStore = set(Rest, Key, Value, Line, empty_store()),
-      % TODO: mark the section as autodefined
-      dict:store(Name, {Line, section, NewSubStore}, Store)
+      dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store)
   end.
 
 %% }}}
