@@ -7,10 +7,12 @@
 %%%   This is the place where semantic-level parts of TOML specification are
 %%%   implemented.
 %%%
-%%% @todo precise error reporting
 %%% @todo eliminate descending over and over again to set consequent keys in
 %%%   a section (i.e. descend once to open a section and again to close it on
 %%%   new section/EOF; remember about subsections)
+%%% @todo include line numbers of first and offending element in array type
+%%%   mismatch errors
+%%% @todo include types information in array type mismatch errors
 %%% @end
 %%%---------------------------------------------------------------------------
 
@@ -22,6 +24,7 @@
 
 -export_type([store/0, store_array/0]).
 -export_type([jsx_object/0, jsx_list/0, jsx_value/0, scalar/0, datetime/0]).
+-export_type([semantic_error/0, error_location/0, error_data_location/0]).
 
 %%%---------------------------------------------------------------------------
 %%% data types
@@ -112,12 +115,17 @@
 -type error_location() ::
   {Path :: [string(), ...], CurLine :: line(), PrevLine :: line()}.
 
-% this error type doesn't cover inline sections (objects) and inline arrays
--type error() ::
+-type error_data_location() :: [pos_integer() | string()].
+
+-type semantic_error() ::
     {descent, key, error_location()}
   | {section, key | section | array_section, error_location()}
   | {array_section, key | section | auto_section, error_location()}
-  | {key, key | section | auto_section | array_section, error_location()}.
+  | {key, key | section | auto_section | array_section, error_location()}
+  | {duplicate, Key :: string(),
+      error_data_location(), error_location()}
+  | {type_mismatch, Pos :: pos_integer(),
+      error_data_location(), Path :: [string(), ...]}.
 
 %% }}}
 %%----------------------------------------------------------
@@ -127,8 +135,7 @@
 %% @doc Build value store out of a list of directives that come from parsing.
 
 -spec build_store([ast_section_header() | ast_key_value()]) ->
-  {ok, store()} | {error, Reason}
-  when Reason :: term().
+  {ok, store()} | {error, semantic_error()}.
 
 build_store(Directives) ->
   try
@@ -200,9 +207,11 @@ set([] = _SectionName, ErrorPath, Key, Value, Line, Store) ->
       ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
       erlang:throw({key, Type, ErrorLocation});
     error when ValueType == object ->
-      dict:store(Key, {Line, object, build_object(Value)}, Store);
+      StoreValue = build_object(Value, [], [Key | ErrorPath]),
+      dict:store(Key, {Line, object, StoreValue}, Store);
     error when ValueType == array ->
-      dict:store(Key, {Line, key, {array, build_array(Value)}}, Store);
+      StoreValue = build_array(Value, [], [Key | ErrorPath]),
+      dict:store(Key, {Line, key, {array, StoreValue}}, Store);
     error ->
       dict:store(Key, {Line, key, Value}, Store)
   end;
@@ -345,23 +354,27 @@ add_array_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
 
 %% @doc Convert inline table AST fragment to a value store.
 %%
-%%   Arrays in the table are converted with {@link build_array/1}, inner
+%%   Arrays in the table are converted with {@link build_array/3}, inner
 %%   inline objects are converted recursively.
 
--spec build_object(ast_inline_table()) ->
+-spec build_object(ast_inline_table(),
+                   [string() | pos_integer()], [string()]) ->
   store().
 
-build_object({inline_table, KeyValues} = _Object) ->
+build_object({inline_table, KeyValues} = _Object, DataPath, ErrorPath) ->
   lists:foldl(
     fun({key, Line, Key, Value}, Store) ->
       ValueType = typeof(Value),
       case dict:find(Key, Store) of
         {ok, {PrevLine, key, _PrevValue}} ->
-          erlang:throw({duplicate, PrevLine}); % TODO: more precise error
+          ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+          erlang:throw({duplicate, Key, lists:reverse(DataPath), ErrorLocation});
         error when ValueType == object ->
-          dict:store(Key, {Line, object, build_object(Value)}, Store);
+          StoreValue = build_object(Value, [Key | DataPath], ErrorPath),
+          dict:store(Key, {Line, object, StoreValue}, Store);
         error when ValueType == array ->
-          dict:store(Key, {Line, key, {array, build_array(Value)}}, Store);
+          StoreValue = build_array(Value, [Key | DataPath], ErrorPath),
+          dict:store(Key, {Line, key, {array, StoreValue}}, Store);
         error ->
           Entry = {Line, key, Value},
           dict:store(Key, Entry, Store)
@@ -381,24 +394,48 @@ build_object({inline_table, KeyValues} = _Object) ->
 %%
 %%   Array of objects is converted to list of jsx-like structures.
 
--spec build_array(ast_array()) ->
+-spec build_array(ast_array(), [string() | pos_integer()], [string()]) ->
   store_array().
 
-build_array({array, []} = _Value) ->
+build_array({array, []} = _Value, _DataPath, _ErrorPath) ->
   {empty, []};
-build_array({array, [HE | Rest] = Elements} = _Value) ->
-  Type = typeof(HE),
-  case lists:all(fun(E) -> Type == typeof(E) end, Rest) of
+build_array({array, [E | Rest] = Elements} = _Value, DataPath, ErrorPath) ->
+  Type = typeof(E),
+  % start counting at position 2, as position 1 is `E' that won't be checked
+  case consistent_types(Type, 2, Rest) of
     true when Type == object ->
-      {Type, [store_to_jsx(build_object(E)) || E <- Elements]};
+      {Type, foreach_make_object(1, Elements, DataPath, ErrorPath)};
     true when Type == array ->
-      {Type, [build_array(E) || E <- Elements]};
+      {Type, foreach_make_array(1, Elements, DataPath, ErrorPath)};
     true ->
       {Type, Elements};
-    false ->
-      % TODO: more precise error (which element, expected vs. encountered
-      % type, array line number, mismatched element line number)
-      erlang:throw(array_type_mismatch)
+    {false, Pos} ->
+      % TODO: include line numbers of first and offending elements
+      % TODO: include element types
+      %ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = lists:reverse(ErrorPath),
+      erlang:throw({type_mismatch, Pos,
+                     lists:reverse(DataPath), ErrorLocation})
+  end.
+
+foreach_make_array(_Pos, [] = _Elements, _DataPath, _ErrorPath) ->
+  [];
+foreach_make_array(Pos, [E | Rest] = _Elements, DataPath, ErrorPath) ->
+  [build_array(E, [Pos | DataPath], ErrorPath) |
+    foreach_make_array(Pos + 1, Rest, DataPath, ErrorPath)].
+
+foreach_make_object(_Pos, [] = _Elements, _DataPath, _ErrorPath) ->
+  [];
+foreach_make_object(Pos, [E | Rest] = _Elements, DataPath, ErrorPath) ->
+  [store_to_jsx(build_object(E, [Pos | DataPath], ErrorPath)) |
+    foreach_make_object(Pos + 1, Rest, DataPath, ErrorPath)].
+
+consistent_types(_Type, _Pos, [] = _Elements) ->
+  true;
+consistent_types(Type, Pos, [E | Rest] = _Elements) ->
+  case typeof(E) of
+    Type -> consistent_types(Type, Pos + 1, Rest);
+    _ -> {false, Pos}
   end.
 
 %% }}}
@@ -442,7 +479,7 @@ store_to_jsx_fold(K, {_Line, T, V}, Acc) ->
   jsx_list().
 
 array_to_jsx({object, Object} = _Array) ->
-  % objects in an array are already jsx-like structures (see build_array/1)
+  % objects in an array are already jsx-like structures (see build_array/3)
   Object;
 array_to_jsx({array, Arrays} = _Array) ->
   [array_to_jsx(A) || A <- Arrays];
