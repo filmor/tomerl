@@ -526,8 +526,96 @@ format_error({type_mismatch, PrevLine} = _Reason) ->
 format_error(array_type_mismatch = _Reason) ->
   "array elements are of different type";
 
+format_error({auto_section, key, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: parent section ~s already defined as key in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({section, key, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: section ~s already defined as key in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({section, section, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: section ~s already defined in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({section, array_section, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: section ~s already defined as array section in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({array_section, key, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: array section ~s already defined as key in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({array_section, section, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: array section ~s already defined as regular section in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({array_section, auto_section, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: array section ~s already defined (implicitly) as regular section in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({key, key, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: key ~s already defined in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({key, section, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: key ~s already defined as section in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({key, auto_section, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: key ~s already defined (implicitly) as section in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({key, array_section, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: key ~s already defined as array section in line ~B", [
+    Line, format_path(Path), PrevLine
+  ]);
+format_error({duplicate, Key, [], {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: value ~s: duplicate key ~s in the object (previous line: ~B)", [
+    Line, format_path(Path), quote_string(Key), PrevLine
+  ]);
+format_error({duplicate, Key, DataLocation, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: value ~s: duplicate key ~s in object ~s (previous line: ~B)", [
+    Line, format_path(Path), quote_string(Key),
+    format_data_location(DataLocation), PrevLine
+  ]);
+format_error({type_mismatch, Pos, [], Path} = _Reason) ->
+  format("value ~s: element type mismatch at position ~B in the array", [
+    format_path(Path), Pos
+  ]);
+format_error({type_mismatch, Pos, DataLocation, Path} = _Reason) ->
+  format("value ~s: element type mismatch at position ~B in array ~s", [
+    format_path(Path), Pos, format_data_location(DataLocation)
+  ]);
+
 format_error(_Reason) ->
   "unrecognized error".
+
+%%----------------------------------------------------------
+%% error formatting helpers {{{
+
+format(Format, Data) ->
+  unicode:characters_to_list(io_lib:format(Format, Data)).
+
+format_data_location(DataLocation) ->
+  string:join(lists:map(
+    fun
+      (Pos) when is_integer(Pos) -> integer_to_list(Pos);
+      (Key) when is_list(Key) -> quote_string(Key)
+    end,
+    DataLocation
+  ), ".").
+
+format_path(Path) ->
+  % TODO: better quoting
+  string:join(Path, ".").
+
+quote_string(Str) ->
+  % TODO: better quoting
+  [$" | Str ++ [$"]].
+
+%% }}}
+%%----------------------------------------------------------
 
 %%%---------------------------------------------------------------------------
 %%% value store traversal
