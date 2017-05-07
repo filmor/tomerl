@@ -8,6 +8,9 @@
 %%%   implemented.
 %%%
 %%% @todo precise error reporting
+%%% @todo eliminate descending over and over again to set consequent keys in
+%%%   a section (i.e. descend once to open a section and again to close it on
+%%%   new section/EOF; remember about subsections)
 %%% @end
 %%%---------------------------------------------------------------------------
 
