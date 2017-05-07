@@ -248,8 +248,7 @@ add_section([Name | Rest] = _SectionName, Line, Store) ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     error ->
       NewSubStore = add_section(Rest, Line, empty_store()),
-      % TODO: mark the section as autodefined
-      dict:store(Name, {Line, section, NewSubStore}, Store)
+      dict:store(Name, {Line, auto_section, NewSubStore}, Store)
   end.
 
 %% }}}
@@ -296,8 +295,7 @@ add_array_section([Name | Rest] = _SectionName, Line, Store) ->
       erlang:throw({duplicate, PrevLine}); % TODO: different error
     error ->
       NewSubStore = add_array_section(Rest, Line, empty_store()),
-      % TODO: mark the section as autodefined
-      dict:store(Name, {Line, section, NewSubStore}, Store)
+      dict:store(Name, {Line, auto_section, NewSubStore}, Store)
   end.
 
 %% }}}
