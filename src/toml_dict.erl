@@ -590,8 +590,27 @@ format_path([Segment | Rest]) ->
   [quote_string(Segment), $. | format_path(Rest)].
 
 quote_string(Str) ->
-  % TODO: better quoting
-  [$" | Str ++ [$"]].
+  [$" | escape_chars(Str) ++ [$"]].
+
+escape_chars([] = _Str) -> [];
+escape_chars([$\b | Rest] = _Str) -> [$\\, $b | escape_chars(Rest)];
+escape_chars([$\t | Rest] = _Str) -> [$\\, $t | escape_chars(Rest)];
+escape_chars([$\n | Rest] = _Str) -> [$\\, $n | escape_chars(Rest)];
+escape_chars([$\f | Rest] = _Str) -> [$\\, $f | escape_chars(Rest)];
+escape_chars([$\r | Rest] = _Str) -> [$\\, $r | escape_chars(Rest)];
+escape_chars([$\" | Rest] = _Str) -> [$\\, $" | escape_chars(Rest)];
+escape_chars([$\\ | Rest] = _Str) -> [$\\, $\\ | escape_chars(Rest)];
+escape_chars([C | Rest] = _Str) when C >= 16#20, C =< 16#7e -> [C | escape_chars(Rest)];
+escape_chars([C | Rest] = _Str) -> escape(C) ++ escape_chars(Rest).
+
+escape(C) when C < 16#10 -> "\\u000" ++ integer_to_list(C, 16);
+escape(C) when C < 16#100 -> "\\u00" ++ integer_to_list(C, 16);
+escape(C) when C < 16#1000 -> "\\u0" ++ integer_to_list(C, 16);
+escape(C) when C < 16#10000 -> "\\u" ++ integer_to_list(C, 16);
+escape(C) when C < 16#100000 -> "\\U000" ++ integer_to_list(C, 16);
+escape(C) when C < 16#1000000 -> "\\U00" ++ integer_to_list(C, 16);
+escape(C) when C < 16#10000000 -> "\\U0" ++ integer_to_list(C, 16);
+escape(C) when C < 16#100000000 -> "\\U" ++ integer_to_list(C, 16).
 
 %% }}}
 %%----------------------------------------------------------
