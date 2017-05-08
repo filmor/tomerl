@@ -9,8 +9,7 @@ DIALYZER_PLT = ~/.dialyzer_plt $(wildcard .*.plt)
 endif
 DIALYZER_OPTS = --no_check_plt $(if $(DIALYZER_PLT),--plts $(DIALYZER_PLT))
 
-APP_VERSION = $(shell _install/app_version ebin/$(PROJECT).app)
-BEAM_INSTALL_ROOT = $(shell _install/lib_dir)
+#BEAM_INSTALL_ROOT = <detected with $(ERL)>
 DOCDIR = /usr/share/doc/erlang-$(PROJECT)
 
 #-----------------------------------------------------------------------------
@@ -54,6 +53,18 @@ define install
 install -D -m $1 $2 $3/$2
 
 endef
+
+APP_VERSION = $(shell $(ERL) -eval ' \
+	{ok, AppFile} = init:get_argument(file), \
+	{ok, [{application,_,KeyList}]} = file:consult(AppFile), \
+	io:put_chars([proplists:get_value(vsn, KeyList), "\n"]), \
+	halt(). \
+' -file ebin/$(PROJECT).app)
+
+BEAM_INSTALL_ROOT = $(shell $(ERL) -noinput -eval ' \
+	io:put_chars([code:lib_dir(), "\n"]), \
+	halt(). \
+')
 
 #-----------------------------------------------------------------------------
 # vim:ft=make
