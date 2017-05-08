@@ -57,11 +57,11 @@
 
 -type ast_section_name() :: [string(), ...].
 
--type ast_key_value() :: {key, line(), ast_key(), ast_value()}.
+-type ast_key_value() :: {key, ast_key(), ast_value()}.
 
 -type ast_key() :: string().
 
--type ast_value() :: scalar() | ast_array() | ast_inline_table().
+-type ast_value() :: {line(), scalar() | ast_array() | ast_inline_table()}.
 
 -type ast_array() :: {array, [ast_value()]}.
 
@@ -164,9 +164,9 @@ build_store([{array_table, Line, SectionName} | Rest] = _Directives,
   NewValues = add_array_section(SectionName, [], Line, Store),
   build_store(Rest, SectionName, NewValues);
 
-build_store([{key, Line, Key, Value} | Rest] = _Directives,
+build_store([{key, Key, Value} | Rest] = _Directives,
             CurrentSection, Store) ->
-  NewValues = set(CurrentSection, CurrentSection, Key, Value, Line, Store),
+  NewValues = set(CurrentSection, CurrentSection, Key, Value, Store),
   build_store(Rest, CurrentSection, NewValues);
 
 build_store([] = _Directives, _CurrentSection, Store) ->
@@ -189,46 +189,46 @@ empty_store() ->
 
 %% }}}
 %%----------------------------------------------------------
-%% set(SectionName, ErrorPath, Key, Value, Line, Store) {{{
+%% set(SectionName, ErrorPath, Key, Value, Store) {{{
 
 %% @doc Set a value under a specified key in specified section in value store.
 
 -spec set([] | ast_section_name(), [string()],
-          ast_key(), ast_value(), line(), store()) ->
+          ast_key(), ast_value(), store()) ->
   store().
 
-set([] = _SectionName, ErrorPath, Key, Value, Line, Store) ->
-  ValueType = typeof(Value),
+set([] = _SectionName, ErrorPath, Key, {Line, Val} = _Value, Store) ->
+  ValueType = typeof(Val),
   case dict:find(Key, Store) of
-    {ok, {PrevLine, object, _Value}} ->
+    {ok, {PrevLine, object, _PrevValue}} ->
       ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
       erlang:throw({key, key, ErrorLocation});
-    {ok, {PrevLine, Type, _Value}} when Type /= object ->
+    {ok, {PrevLine, Type, _PrevValue}} when Type /= object ->
       ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
       erlang:throw({key, Type, ErrorLocation});
     error when ValueType == object ->
-      StoreValue = build_object(Value, [], [Key | ErrorPath]),
+      StoreValue = build_object(Val, [], [Key | ErrorPath]),
       dict:store(Key, {Line, object, StoreValue}, Store);
     error when ValueType == array ->
-      StoreValue = build_array(Value, [], [Key | ErrorPath]),
+      StoreValue = build_array(Val, [], [Key | ErrorPath]),
       dict:store(Key, {Line, key, {array, StoreValue}}, Store);
     error ->
-      dict:store(Key, {Line, key, Value}, Store)
+      dict:store(Key, {Line, key, Val}, Store)
   end;
 
-set([Name | Rest] = _SectionName, ErrorPath, Key, Value, Line, Store) ->
+set([Name | Rest] = _SectionName, ErrorPath, Key, Value, Store) ->
   % XXX: descent here cannot encounter anything but sections, because the same
   % descent was already performed previously, when the section that this key
   % is in was opened
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, SubStore}} ->
-      NewSubStore = set(Rest, ErrorPath, Key, Value, Line, SubStore),
+      NewSubStore = set(Rest, ErrorPath, Key, Value, SubStore),
       dict:store(Name, {PrevLine, section, NewSubStore}, Store);
     {ok, {PrevLine, auto_section, SubStore}} ->
-      NewSubStore = set(Rest, ErrorPath, Key, Value, Line, SubStore),
+      NewSubStore = set(Rest, ErrorPath, Key, Value, SubStore),
       dict:store(Name, {PrevLine, auto_section, NewSubStore}, Store);
     {ok, {PrevLine, array_section, [SubStore | RestStores]}} ->
-      NewSubStore = set(Rest, ErrorPath, Key, Value, Line, SubStore),
+      NewSubStore = set(Rest, ErrorPath, Key, Value, SubStore),
       NewSubStoreList = [NewSubStore | RestStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store)
   end.
@@ -363,7 +363,7 @@ add_array_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
 
 build_object({inline_table, KeyValues} = _Object, DataPath, ErrorPath) ->
   lists:foldl(
-    fun({key, Line, Key, Value}, Store) ->
+    fun({key, Key, {Line, Value}}, Store) ->
       ValueType = typeof(Value),
       case dict:find(Key, Store) of
         {ok, {PrevLine, key, _PrevValue}} ->
@@ -399,13 +399,13 @@ build_object({inline_table, KeyValues} = _Object, DataPath, ErrorPath) ->
 
 build_array({array, []} = _Value, _DataPath, _ErrorPath) ->
   {empty, []};
-build_array({array, [E | _] = Elements} = _Value, DataPath, ErrorPath) ->
+build_array({array, [{_L,E} | _] = Elements} = _Value, DataPath, ErrorPath) ->
   Type = typeof(E),
   {Type, foreach(Type, 1, Elements, DataPath, ErrorPath)}.
 
 foreach(_Type, _Pos, [] = _Elements, _DataPath, _ErrorPath) ->
   [];
-foreach(Type, Pos, [E | Rest] = _Elements, DataPath, ErrorPath) ->
+foreach(Type, Pos, [{_Line, E} | Rest] = _Elements, DataPath, ErrorPath) ->
   case typeof(E) of
     Type when Type == object ->
       [store_to_jsx(build_object(E, [Pos | DataPath], ErrorPath)) |
@@ -481,7 +481,7 @@ array_to_jsx({_Type, Values} = _Array) ->
 
 %% @doc Determine type of an AST fragment that represents a value (RHS).
 
--spec typeof(ast_value()) ->
+-spec typeof(scalar() | ast_array() | ast_inline_table()) ->
   string | integer | float | boolean | datetime | array | object.
 
 typeof(Value) when is_list(Value) -> string;
