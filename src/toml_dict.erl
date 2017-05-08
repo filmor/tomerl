@@ -10,7 +10,6 @@
 %%% @todo eliminate descending over and over again to set consequent keys in
 %%%   a section (i.e. descend once to open a section and again to close it on
 %%%   new section/EOF; remember about subsections)
-%%% @todo include types information in array type mismatch errors
 %%% @end
 %%%---------------------------------------------------------------------------
 
@@ -122,7 +121,8 @@
   | {key, key | section | auto_section | array_section, error_location()}
   | {duplicate, Key :: string(),
       error_data_location(), error_location()}
-  | {type_mismatch, Pos :: pos_integer(),
+  | {type_mismatch,
+      {Pos :: pos_integer(), OffendingType :: atom(), ExpectedType :: atom()},
       error_data_location(), error_location()}.
 
 %% }}}
@@ -414,10 +414,9 @@ foreach(Type, Pos, [{Line, E} | Rest] = _Elements,
         foreach(Type, Pos + 1, Rest, PrevLine, DataPath, ErrorPath)];
     Type ->
       [E | foreach(Type, Pos + 1, Rest, PrevLine, DataPath, ErrorPath)];
-    _OtherType ->
-      % TODO: include element types
+    OtherType ->
       ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
-      erlang:throw({type_mismatch, Pos,
+      erlang:throw({type_mismatch, {Pos, OtherType, Type},
                      lists:reverse(DataPath), ErrorLocation})
   end.
 
@@ -562,11 +561,11 @@ format_error({duplicate, Key, DataLocation, {Path, Line, PrevLine}} = _Reason) -
     Line, format_path(Path), quote_string(Key),
     format_data_location(DataLocation), PrevLine
   ]);
-format_error({type_mismatch, Pos, [], {Path, Line, PrevLine}} = _Reason) ->
+format_error({type_mismatch, {Pos, _Offending, _Expected}, [], {Path, Line, PrevLine}} = _Reason) ->
   format("line ~B: value ~s: element type mismatch at position ~B in the array (first element in line: ~B)", [
     Line, format_path(Path), Pos, PrevLine
   ]);
-format_error({type_mismatch, Pos, DataLocation, {Path, Line, PrevLine}} = _Reason) ->
+format_error({type_mismatch, {Pos, _Offending, _Expected}, DataLocation, {Path, Line, PrevLine}} = _Reason) ->
   format("line ~B: value ~s: element type mismatch at position ~B in array ~s (first element in line: ~B)", [
     Line, format_path(Path), Pos, format_data_location(DataLocation), PrevLine
   ]);

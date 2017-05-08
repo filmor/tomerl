@@ -157,10 +157,15 @@
 
 -type semerr_inline() ::
     {duplicate, Key :: string(), semerr_data_location(), semerr_location()}
-  | {type_mismatch, Pos :: pos_integer(),
+  | {type_mismatch,
+      {Pos :: pos_integer(), OffendingType :: atom(), ExpectedType :: atom()},
       semerr_data_location(), semerr_location()}.
 %% Error signifying that inline object has two keys of the same name or an
 %% inline array has elements of different types.
+%%
+%% `Pos' is a 1-based index in the array, `ExpectedType' is data type of the
+%% first array element, and `OffendingType' is the type of the first element
+%% that doesn't match.
 
 -type semerr_data_location() ::
   [pos_integer() | string()].
