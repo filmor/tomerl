@@ -399,43 +399,29 @@ build_object({inline_table, KeyValues} = _Object, DataPath, ErrorPath) ->
 
 build_array({array, []} = _Value, _DataPath, _ErrorPath) ->
   {empty, []};
-build_array({array, [E | Rest] = Elements} = _Value, DataPath, ErrorPath) ->
+build_array({array, [E | _] = Elements} = _Value, DataPath, ErrorPath) ->
   Type = typeof(E),
-  % start counting at position 2, as position 1 is `E' that won't be checked
-  case consistent_types(Type, 2, Rest) of
-    true when Type == object ->
-      {Type, foreach_make_object(1, Elements, DataPath, ErrorPath)};
-    true when Type == array ->
-      {Type, foreach_make_array(1, Elements, DataPath, ErrorPath)};
-    true ->
-      {Type, Elements};
-    {false, Pos} ->
+  {Type, foreach(Type, 1, Elements, DataPath, ErrorPath)}.
+
+foreach(_Type, _Pos, [] = _Elements, _DataPath, _ErrorPath) ->
+  [];
+foreach(Type, Pos, [E | Rest] = _Elements, DataPath, ErrorPath) ->
+  case typeof(E) of
+    Type when Type == object ->
+      [store_to_jsx(build_object(E, [Pos | DataPath], ErrorPath)) |
+        foreach(Type, Pos + 1, Rest, DataPath, ErrorPath)];
+    Type when Type == array ->
+      [build_array(E, [Pos | DataPath], ErrorPath) |
+        foreach(Type, Pos + 1, Rest, DataPath, ErrorPath)];
+    Type ->
+      [E | foreach(Type, Pos + 1, Rest, DataPath, ErrorPath)];
+    _OtherType ->
       % TODO: include line numbers of first and offending elements
       % TODO: include element types
       %ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
       ErrorLocation = lists:reverse(ErrorPath),
       erlang:throw({type_mismatch, Pos,
                      lists:reverse(DataPath), ErrorLocation})
-  end.
-
-foreach_make_array(_Pos, [] = _Elements, _DataPath, _ErrorPath) ->
-  [];
-foreach_make_array(Pos, [E | Rest] = _Elements, DataPath, ErrorPath) ->
-  [build_array(E, [Pos | DataPath], ErrorPath) |
-    foreach_make_array(Pos + 1, Rest, DataPath, ErrorPath)].
-
-foreach_make_object(_Pos, [] = _Elements, _DataPath, _ErrorPath) ->
-  [];
-foreach_make_object(Pos, [E | Rest] = _Elements, DataPath, ErrorPath) ->
-  [store_to_jsx(build_object(E, [Pos | DataPath], ErrorPath)) |
-    foreach_make_object(Pos + 1, Rest, DataPath, ErrorPath)].
-
-consistent_types(_Type, _Pos, [] = _Elements) ->
-  true;
-consistent_types(Type, Pos, [E | Rest] = _Elements) ->
-  case typeof(E) of
-    Type -> consistent_types(Type, Pos + 1, Rest);
-    _ -> {false, Pos}
   end.
 
 %% }}}
