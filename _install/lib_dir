@@ -1,0 +1,12 @@
+#!/usr/bin/escript
+
+main([]) ->
+  io:put_chars([code:lib_dir(), "\n"]);
+
+main([AppFile]) ->
+  {ok, [{application, AppName, KeyList}]} = file:consult(AppFile),
+  Version = proplists:get_value(vsn, KeyList),
+  AppDirName = iolist_to_binary(io_lib:format("~s-~s", [AppName, Version])),
+  io:put_chars([filename:join(code:lib_dir(), AppDirName), "\n"]).
+
+%% vim:ft=erlang

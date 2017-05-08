@@ -1,0 +1,7 @@
+#!/usr/bin/escript
+
+main([AppFile]) ->
+  {ok, [{application, _, KeyList}]} = file:consult(AppFile),
+  io:put_chars([proplists:get_value(vsn, KeyList), "\n"]).
+
+%% vim:ft=erlang
