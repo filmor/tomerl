@@ -199,10 +199,10 @@ set([] = _SectionName, ErrorPath, Key, {Line, Val} = _Value, Store) ->
   ValueType = typeof(Val),
   case dict:find(Key, Store) of
     {ok, {PrevLine, object, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {ErrorPath ++ [Key], Line, PrevLine},
       erlang:throw({key, key, ErrorLocation});
     {ok, {PrevLine, Type, _PrevValue}} when Type /= object ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {ErrorPath ++ [Key], Line, PrevLine},
       erlang:throw({key, Type, ErrorLocation});
     error when ValueType == object ->
       StoreValue = build_object(Val, [], [Key | ErrorPath]),
@@ -243,19 +243,19 @@ set([Name | Rest] = _SectionName, ErrorPath, Key, Value, Store) ->
 add_section([Name] = _SectionName, ErrorPath, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, _SubStore}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({section, section, ErrorLocation});
     {ok, {_PrevLine, auto_section, SubStore}} ->
       % automatically defined section, change its type and definition line
       dict:store(Name, {Line, section, SubStore}, Store);
     {ok, {PrevLine, array_section, _SubStore}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({section, array_section, ErrorLocation});
     {ok, {PrevLine, object, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({section, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({section, key, ErrorLocation});
     error ->
       % not defined, add an empty section
@@ -276,10 +276,10 @@ add_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
       NewSubStoreList = [NewSubStore | RestStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({auto_section, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({auto_section, key, ErrorLocation});
     error ->
       NewSubStore = add_section(Rest, [Name | ErrorPath], Line, empty_store()),
@@ -298,19 +298,19 @@ add_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
 add_array_section([Name] = _SectionName, ErrorPath, Line, Store) ->
   case dict:find(Name, Store) of
     {ok, {PrevLine, section, _SubStore}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({array_section, section, ErrorLocation});
     {ok, {PrevLine, auto_section, _SubStore}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({array_section, auto_section, ErrorLocation});
     {ok, {PrevLine, array_section, SubStores}} ->
       NewSubStoreList = [empty_store() | SubStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({array_section, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({array_section, key, ErrorLocation});
     error ->
       dict:store(Name, {Line, array_section, [empty_store()]}, Store)
@@ -329,10 +329,10 @@ add_array_section([Name | Rest] = _SectionName, ErrorPath, Line, Store) ->
       NewSubStoreList = [NewSubStore | RestStores],
       dict:store(Name, {PrevLine, array_section, NewSubStoreList}, Store);
     {ok, {PrevLine, object, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({auto_section, key, ErrorLocation});
     {ok, {PrevLine, key, _PrevValue}} ->
-      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
+      ErrorLocation = {lists:reverse([Name | ErrorPath]), Line, PrevLine},
       erlang:throw({auto_section, key, ErrorLocation});
     error ->
       NewSubStore = add_array_section(Rest, [Name | ErrorPath], Line,
