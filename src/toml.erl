@@ -158,12 +158,9 @@
 -type semerr_inline() ::
     {duplicate, Key :: string(), semerr_data_location(), semerr_location()}
   | {type_mismatch, Pos :: pos_integer(),
-      semerr_data_location(), Path :: [string(), ...]}.
+      semerr_data_location(), semerr_location()}.
 %% Error signifying that inline object has two keys of the same name or an
 %% inline array has elements of different types.
-%%
-%% Note that type mismatch error, unlike all the other errors, doesn't carry
-%% line numbers, only the path portion of the location.
 
 -type semerr_data_location() ::
   [pos_integer() | string()].

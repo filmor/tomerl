@@ -10,8 +10,6 @@
 %%% @todo eliminate descending over and over again to set consequent keys in
 %%%   a section (i.e. descend once to open a section and again to close it on
 %%%   new section/EOF; remember about subsections)
-%%% @todo include line numbers of first and offending element in array type
-%%%   mismatch errors
 %%% @todo include types information in array type mismatch errors
 %%% @end
 %%%---------------------------------------------------------------------------
@@ -125,7 +123,7 @@
   | {duplicate, Key :: string(),
       error_data_location(), error_location()}
   | {type_mismatch, Pos :: pos_integer(),
-      error_data_location(), Path :: [string(), ...]}.
+      error_data_location(), error_location()}.
 
 %% }}}
 %%----------------------------------------------------------
@@ -399,27 +397,26 @@ build_object({inline_table, KeyValues} = _Object, DataPath, ErrorPath) ->
 
 build_array({array, []} = _Value, _DataPath, _ErrorPath) ->
   {empty, []};
-build_array({array, [{_L,E} | _] = Elements} = _Value, DataPath, ErrorPath) ->
+build_array({array, [{L,E} | _] = Elements} = _Value, DataPath, ErrorPath) ->
   Type = typeof(E),
-  {Type, foreach(Type, 1, Elements, DataPath, ErrorPath)}.
+  {Type, foreach(Type, 1, Elements, L, DataPath, ErrorPath)}.
 
-foreach(_Type, _Pos, [] = _Elements, _DataPath, _ErrorPath) ->
+foreach(_Type, _Pos, [] = _Elements, _PrevLine, _DataPath, _ErrorPath) ->
   [];
-foreach(Type, Pos, [{_Line, E} | Rest] = _Elements, DataPath, ErrorPath) ->
+foreach(Type, Pos, [{Line, E} | Rest] = _Elements,
+        PrevLine, DataPath, ErrorPath) ->
   case typeof(E) of
     Type when Type == object ->
       [store_to_jsx(build_object(E, [Pos | DataPath], ErrorPath)) |
-        foreach(Type, Pos + 1, Rest, DataPath, ErrorPath)];
+        foreach(Type, Pos + 1, Rest, PrevLine, DataPath, ErrorPath)];
     Type when Type == array ->
       [build_array(E, [Pos | DataPath], ErrorPath) |
-        foreach(Type, Pos + 1, Rest, DataPath, ErrorPath)];
+        foreach(Type, Pos + 1, Rest, PrevLine, DataPath, ErrorPath)];
     Type ->
-      [E | foreach(Type, Pos + 1, Rest, DataPath, ErrorPath)];
+      [E | foreach(Type, Pos + 1, Rest, PrevLine, DataPath, ErrorPath)];
     _OtherType ->
-      % TODO: include line numbers of first and offending elements
       % TODO: include element types
-      %ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
-      ErrorLocation = lists:reverse(ErrorPath),
+      ErrorLocation = {lists:reverse(ErrorPath), Line, PrevLine},
       erlang:throw({type_mismatch, Pos,
                      lists:reverse(DataPath), ErrorLocation})
   end.
@@ -565,13 +562,13 @@ format_error({duplicate, Key, DataLocation, {Path, Line, PrevLine}} = _Reason) -
     Line, format_path(Path), quote_string(Key),
     format_data_location(DataLocation), PrevLine
   ]);
-format_error({type_mismatch, Pos, [], Path} = _Reason) ->
-  format("value ~s: element type mismatch at position ~B in the array", [
-    format_path(Path), Pos
+format_error({type_mismatch, Pos, [], {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: value ~s: element type mismatch at position ~B in the array (first element in line: ~B)", [
+    Line, format_path(Path), Pos, PrevLine
   ]);
-format_error({type_mismatch, Pos, DataLocation, Path} = _Reason) ->
-  format("value ~s: element type mismatch at position ~B in array ~s", [
-    format_path(Path), Pos, format_data_location(DataLocation)
+format_error({type_mismatch, Pos, DataLocation, {Path, Line, PrevLine}} = _Reason) ->
+  format("line ~B: value ~s: element type mismatch at position ~B in array ~s (first element in line: ~B)", [
+    Line, format_path(Path), Pos, format_data_location(DataLocation), PrevLine
   ]);
 
 format_error(_Reason) ->
