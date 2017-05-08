@@ -580,9 +580,14 @@ format_data_location(DataLocation) ->
     DataLocation
   ), ".").
 
-format_path(Path) ->
-  % TODO: better quoting
-  string:join(Path, ".").
+format_path([]) ->
+  [];
+format_path([Segment]) ->
+  quote_string(Segment);
+format_path([Segment1, Segment2]) ->
+  [quote_string(Segment1), $., quote_string(Segment2)];
+format_path([Segment | Rest]) ->
+  [quote_string(Segment), $. | format_path(Rest)].
 
 quote_string(Str) ->
   % TODO: better quoting
