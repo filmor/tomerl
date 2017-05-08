@@ -500,14 +500,6 @@ typeof({inline_table, _} = _Value) -> object.
 -spec format_error(term()) ->
   string().
 
-%% errors extracted directly from `erlang:throw()'
-format_error({duplicate, PrevLine} = _Reason) ->
-  "key already defined in line " ++ integer_to_list(PrevLine);
-format_error({type_mismatch, PrevLine} = _Reason) ->
-  "section defined with a different type in line " ++ integer_to_list(PrevLine);
-format_error(array_type_mismatch = _Reason) ->
-  "array elements are of different type";
-
 format_error({auto_section, key, {Path, Line, PrevLine}} = _Reason) ->
   format("line ~B: parent section ~s already defined as key in line ~B", [
     Line, format_path(Path), PrevLine
