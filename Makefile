@@ -16,7 +16,7 @@ APP_VERSION = $(call app-version,ebin/$(PROJECT).app)
 ERL_INSTALL_LIB_DIR = $(ERL_LIB_DIR)/$(PROJECT)-$(APP_VERSION)
 DOCDIR = /usr/share/doc/erlang-$(PROJECT)
 
-ERLC_OPTS =
+ERLC_OPTS = +debug_info
 
 include erlang.mk
 include erlang.install.mk
