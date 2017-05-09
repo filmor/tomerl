@@ -9,15 +9,17 @@ DIALYZER_PLT = ~/.dialyzer_plt $(wildcard .*.plt)
 endif
 DIALYZER_OPTS = --no_check_plt $(if $(DIALYZER_PLT),--plts $(DIALYZER_PLT))
 
-#BEAM_INSTALL_ROOT = <detected with $(ERL)>
-DOCDIR = /usr/share/doc/erlang-$(PROJECT)
-
 #-----------------------------------------------------------------------------
 
 PROJECT = toml
+APP_VERSION = $(call app-version,ebin/$(PROJECT).app)
+ERL_INSTALL_LIB_DIR = $(ERL_LIB_DIR)/$(PROJECT)-$(APP_VERSION)
+DOCDIR = /usr/share/doc/erlang-$(PROJECT)
+
 ERLC_OPTS =
 
 include erlang.mk
+include erlang.install.mk
 
 src/toml_lexer.erl::
 	$(verbose)grep -q @private $@ || sed -i -e '1i%%% @private' $@
@@ -38,33 +40,15 @@ doc: edoc
 
 #-----------------------------------------------------------------------------
 
-.PHONY: install install-doc install-erlang
+.PHONY: install install-erlang install-doc
 
-install: install-doc install-erlang
+install: install-erlang install-doc
 
 install-erlang: app
-	$(foreach F,$(wildcard ebin/*),$(call install,644,$F,$(DESTDIR)$(BEAM_INSTALL_ROOT)/$(PROJECT)-$(APP_VERSION)))
+	$(call install-wildcard,644,ebin/*,$(DESTDIR)$(ERL_INSTALL_LIB_DIR)/ebin)
 
 install-doc: edoc
-	mkdir -p $(DESTDIR)$(DOCDIR)/html
-	cp doc/* $(DESTDIR)$(DOCDIR)/html
-
-define install
-install -D -m $1 $2 $3/$2
-
-endef
-
-APP_VERSION = $(shell $(ERL) -eval ' \
-	{ok, AppFile} = init:get_argument(file), \
-	{ok, [{application,_,KeyList}]} = file:consult(AppFile), \
-	io:put_chars([proplists:get_value(vsn, KeyList), "\n"]), \
-	halt(). \
-' -file ebin/$(PROJECT).app)
-
-BEAM_INSTALL_ROOT = $(shell $(ERL) -noinput -eval ' \
-	io:put_chars([code:lib_dir(), "\n"]), \
-	halt(). \
-')
+	$(call install-wildcard,644,doc/*.html doc/*.png doc/*.css,$(DESTDIR)$(DOCDIR)/html)
 
 #-----------------------------------------------------------------------------
 # vim:ft=make
