@@ -17,6 +17,12 @@ ERL_INSTALL_LIB_DIR = $(ERL_LIB_DIR)/$(PROJECT)-$(APP_VERSION)
 DOCDIR = /usr/share/doc/erlang-$(PROJECT)
 
 ERLC_OPTS = +debug_info
+EDOC_OPTS := {overview, "src/overview.edoc"}, \
+             {source_path, ["src", "examples"]}, \
+             todo
+ifneq ($(devel),)
+EDOC_OPTS := $(EDOC_OPTS), private
+endif
 
 include erlang.mk
 include erlang.install.mk
