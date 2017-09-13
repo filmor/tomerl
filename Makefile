@@ -27,8 +27,14 @@ endif
 include erlang.mk
 include erlang.install.mk
 
+define newline
+
+
+endef
+export newline
+
 src/toml_lexer.erl::
-	$(verbose)grep -q @private $@ || sed -i -e '1i%%% @private' $@
+	$(verbose)grep -q @private $@ || (sed -i.bak -e "1i\\$${newline}%%% @private$${newline}" $@ && rm $@.bak)
 
 #-----------------------------------------------------------------------------
 
