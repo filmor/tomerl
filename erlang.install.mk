@@ -29,9 +29,13 @@ endef
 #-----------------------------------------------------------------------------
 # build rule helpers
 
+inst_silent_0 = true
+inst_silent = $(inst_silent_$(V))
+
 # $(call install-wildcard,$(MODE),$(WILDCARD),$(DESTDIR))
 define install-wildcard
-$(foreach F,$(wildcard $2),$(call install,$1,$F,$3))
+$(if $(inst_silent),@)mkdir -p $3
+$(foreach F,$(wildcard $2),$(call install,$1,$F,$3,skip_mkdir))
 endef
 
 # $(call install,$(MODE),$(FILE),$(DESTDIR))
@@ -40,7 +44,8 @@ endef
 # file under a different name (e.g. "*.example"), use /usr/bin/install
 # directly.
 define install
-install -D -m $1 $2 $3/$(notdir $2)
+$(if $4,,$(if $(inst_silent),@)mkdir -p $3)
+$(if $(inst_silent),@echo " INSTALL " $3/$(notdir $2); )install -m $1 $2 $3/$(notdir $2)
 
 endef
 
@@ -49,10 +54,12 @@ endef
 # Remember to set in $(BEAM_OPTS) at least "-args_file ...", so the VM args
 # can be overriden.
 define install-escript
-mkdir -p $(dir $2)
-printf '#!%s\n%%%%! %s\n' '$(ESCRIPT_PATH)' '$3' > $2
-sed -e '1,3{/^#!/d; /^%*!/d}' $1 >> $2
-chmod 755 $2
+$(if $(inst_silent),@echo " ESCRIPT " $2)
+$(if $(inst_silent),@)mkdir -p $(dir $2)
+$(if $(inst_silent),@)printf '#!%s\n%%%%! %s\n' '$(ESCRIPT_PATH)' '$3' > $2
+$(if $(inst_silent),@)head -n 3 $1 | sed -e '/^#!/d' -e '/^%*!/d' >> $2
+$(if $(inst_silent),@)tail -n +4 $1 >> $2
+$(if $(inst_silent),@)chmod 755 $2
 endef
 
 #-----------------------------------------------------------------------------
