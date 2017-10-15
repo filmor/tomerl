@@ -174,7 +174,8 @@
 %% types: key for objects, 1-based index for arrays.
 
 -type semerr_location() ::
-  {Path :: [string(), ...], CurLine :: pos_integer, PrevLine :: pos_integer()}.
+  {Path :: [string(), ...], CurLine :: pos_integer(),
+    PrevLine :: pos_integer()}.
 %% Location information of semantic error. `Path' is name of the offending
 %% section and, if applicable, key.
 
