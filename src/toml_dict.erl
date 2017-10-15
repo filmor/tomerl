@@ -16,7 +16,7 @@
 -module(toml_dict).
 
 -export([build_store/1]).
--export([fold/3]).
+-export([fold/3, find_line/3]).
 -export([format_error/1]).
 
 -export_type([store/0, store_array/0]).
@@ -678,6 +678,22 @@ dict_fold_traverse(Key, {_Line, array_section, SubStores}, {Fun, Path, Acc}) ->
   Values = lists:reverse([store_to_jsx(Store) || Store <- SubStores]),
   NewAcc = Fun(Path, Key, {array, {object, Values}}, Acc),
   {Fun, Path, NewAcc}.
+
+%% @doc Find a line in TOML file where specific key in section was defined.
+%%   Intended to be called on keys traversed by {@link fold/3}.
+
+-spec find_line([store_key()], store_key(), store()) ->
+  line().
+
+find_line([] = _Section, Key, Store) ->
+  {Line, _Type, _Value} = dict:fetch(Key, Store),
+  Line;
+find_line([Fragment | Rest] = _Section, Key, Store) ->
+  case dict:fetch(Fragment, Store) of
+    {_Line, section,      SubStore} -> find_line(Rest, Key, SubStore);
+    {_Line, auto_section, SubStore} -> find_line(Rest, Key, SubStore);
+    {_Line, object,       SubStore} -> find_line(Rest, Key, SubStore)
+  end.
 
 %%%---------------------------------------------------------------------------
 %%% vim:ft=erlang:foldmethod=marker

@@ -19,7 +19,8 @@
 -export_type([config/0, section/0, key/0, toml_value/0]).
 -export_type([toml_array/0, datetime/0]).
 -export_type([jsx_object/0, jsx_list/0, jsx_value/0]).
--export_type([validate_fun/0, validate_fun_return/0, validate_error/0]).
+-export_type([validate_fun/0, validate_fun_return/0]).
+-export_type([validate_location/0, validate_error/0]).
 -export_type([toml_error/0, semantic_error/0]).
 -export_type([semerr_redefinition/0, semerr_inline/0]).
 -export_type([semerr_data_location/0, semerr_location/0]).
@@ -116,9 +117,9 @@
 %% {@type @{ok, Data@}} results in the {@type toml_value()} of `{data, Data}'.
 %% See {@link get_value/3}.
 %%
-%% {@type @{error, Reason :: validate_error()@}} is reported by {@link
-%% read_file/2} and {@link parse/2} as {@type @{error, @{validate, Where,
-%% Reason@}@}}.
+%% {@type @{error, Reason :: validate_error()@}} is reported by
+%% {@link read_file/2} and {@link parse/2} as
+%% {@type @{error, @{validate, Where :: validate_location(), Reason@}@}}.
 
 -type validate_error() :: term().
 %% Error returned by {@type validate_fun()}. See {@type validate_fun_return()}
@@ -131,9 +132,13 @@
 -type toml_error() :: {tokenize, Line :: pos_integer()}
                     | {parse, Line :: pos_integer()}
                     | {semantic, semantic_error()}
-                    | {bad_return, Where :: term(), Result :: term()}
-                    | {validate, Where :: term(), validate_error()}.
+                    | {bad_return, validate_location(), Result :: term()}
+                    | {validate, validate_location(), validate_error()}.
 %% Error in processing TOML.
+
+-type validate_location() ::
+  {Section :: [string()], Key :: string(), Line :: pos_integer()}.
+%% Location information of validation error (see {@type validate_fun()}).
 
 -type semantic_error() :: semerr_redefinition() | semerr_inline().
 %% Data-level error, meaning that data represented by TOML config is forbidden
@@ -261,8 +266,8 @@ accept_all(_Section, _Key, _Value, _Arg) ->
 -spec build_config([term()], validate_fun(), term()) ->
   {ok, config()} | {error, Reason}
   when Reason :: {semantic, term()}
-               | {validate, Where :: term(), validate_error()}
-               | {bad_return, Where :: term(), term()}.
+               | {validate, Where :: validate_location(), validate_error()}
+               | {bad_return, Where :: validate_location(), term()}.
 
 build_config(Directives, Fun, Arg) ->
   case toml_dict:build_store(Directives) of
@@ -271,10 +276,12 @@ build_config(Directives, Fun, Arg) ->
       try toml_dict:fold(fun build_config/4, {Fun, Arg, EmptyConfig}, Store) of
         {_, _, Config} -> {ok, {toml, Config}}
       catch
-        throw:{bad_return, Where, Result} ->
-          {error, {bad_return, Where, Result}};
-        throw:{validate, Where, Reason} ->
-          {error, {validate, Where, Reason}}
+        throw:{bad_return, {Section, Key}, Result} ->
+          Line = toml_dict:find_line(Section, Key, Store),
+          {error, {bad_return, {Section, Key, Line}, Result}};
+        throw:{validate, {Section, Key}, Reason} ->
+          Line = toml_dict:find_line(Section, Key, Store),
+          {error, {validate, {Section, Key, Line}, Reason}}
       end;
     {error, Reason} ->
       {error, {semantic, Reason}}
@@ -336,13 +343,13 @@ empty_section() ->
 -spec format_error(Reason :: term()) ->
   string().
 
-format_error({validate, _Where, Reason}) ->
+format_error({validate, {_Section, _Key, _Line} = _Where, Reason}) ->
   % TODO: use `Where' (error location)
   unicode:characters_to_list([
     "validation error: ",
     io_lib:print(Reason, 1, 16#ffffffff, -1)
   ]);
-format_error({bad_return, _Where, Result}) ->
+format_error({bad_return, {_Section, _Key, _Line} = _Where, Result}) ->
   % TODO: use `Where' (error location)
   unicode:characters_to_list([
     "unexpected value from validation function: ",
