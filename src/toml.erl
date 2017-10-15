@@ -48,14 +48,14 @@
   | {datetime, datetime()}
   | {array, toml_array()}
   | {data, term()}.
-%% Value stored under {@link key()}, along with its type.
+%% Value stored under {@type key()}, along with its type.
 %%
-%% Custom Erlang structure returned by validation function ({@link
+%% Custom Erlang structure returned by validation function ({@type
 %% validate_fun()}) is denoted by {@type @{data, Data@}}.
 %%
 %% Array of values is doubly typed, first as an array, and then with data type
 %% of its content, e.g. `{array, {string, ["one", "two", "three"]}}'. See
-%% {@link toml_array()} for details.
+%% {@type toml_array()} for details.
 
 %% }}}
 %%----------------------------------------------------------
