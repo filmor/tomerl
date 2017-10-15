@@ -104,7 +104,8 @@
 %% validation function {{{
 
 -type validate_fun() ::
-  fun((section(), key(), toml_value(), Arg :: term()) -> validate_fun_return()).
+  fun((section(), key(), toml_value() | section, Arg :: term()) ->
+        validate_fun_return()).
 %% Key validation callback. This callback is specified at configuration
 %% parsing time and has a chance to further verify validity of a value or even
 %% convert it already to its intended form, e.g. listen address
@@ -113,6 +114,12 @@
 %% <b>NOTE</b>: Array section ("array of tables" in TOML's terms) is passed
 %% as an array of objects, i.e.
 %% {@type @{array, @{object, [jsx_object(), ...]@}@}}.
+%%
+%% Since it's not allowed to have a section and key of the same name,
+%% subsections themselves are also subject to validation. Validation function
+%% can return `ok', `{ok,_}', or `ignore' to accept the section name (the
+%% three values have the same result; any data from `{ok,Data}' is ignored)
+%% and `{error,_}' to reject the name.
 
 -type validate_fun_return() :: ok | {ok, Data :: term()} | ignore
                              | {error, validate_error()}.
@@ -297,6 +304,13 @@ build_config(Directives, Fun, Arg) ->
   term().
 
 build_config(Section, Key, section = _Value, {ValidateFun, Arg, Config}) ->
+  case ValidateFun(Section, Key, section, Arg) of
+    ok -> ok;
+    {ok, _Data} -> ignore;
+    ignore -> ok;
+    {error, Reason} -> erlang:throw({validate, {Section, Key}, Reason});
+    Result -> erlang:throw({bad_return, {Section, Key}, Result})
+  end,
   NewConfig = dict:update(
     Section,
     fun({Keys, SubSects}) -> {Keys, [Key | SubSects]} end,
