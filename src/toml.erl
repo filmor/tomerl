@@ -109,6 +109,10 @@
 %% parsing time and has a chance to further verify validity of a value or even
 %% convert it already to its intended form, e.g. listen address
 %% `"<host>:<port>"' can be immediately converted to `{Host,Port}' tuple.
+%%
+%% <b>NOTE</b>: Array section ("array of tables" in TOML's terms) is passed
+%% as an array of objects, i.e.
+%% {@type @{array, @{object, [jsx_object(), ...]@}@}}.
 
 -type validate_fun_return() :: ok | {ok, Data :: term()} | ignore
                              | {error, validate_error()}.
