@@ -48,6 +48,13 @@ Configuration from this file can be retrieved in following manner:
     {boolean, Val3} = toml:get_value(["berry", "black"], "has_some", Config).
     none = toml:get_value([], "oranges", Config).
 
+Documentation
+-------------
+
+`toml` is documented using EDoc. A local copy is generated with `make doc`
+command to `./doc/` directory. An already generated online copy is available
+at <http://dozzie.jarowit.net/api/erlang-toml/>.
+
 Known limitations
 -----------------
 
