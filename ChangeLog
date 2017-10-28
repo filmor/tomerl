@@ -1,0 +1,18 @@
+version 0.3.0
+
+  * Settled and documented location for errors reported by validation
+    function.
+
+  Backward incompatible changes:
+
+  * Validation function is now also called for sections.
+
+version 0.2.0
+
+  * Added and documented precise location for semantic errors (duplicate keys
+    and similar).
+
+version 0.1.0
+
+  * Initial release.
+
