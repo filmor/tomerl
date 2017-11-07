@@ -449,6 +449,10 @@ exists(Section, Key, {toml, Store} = _Config) ->
 %%
 %%   Only keys that correspond to scalars or arrays are returned. Subsections
 %%   (which include inline sections) are omitted.
+%%
+%%   `none' is returned when `Section' is neither an explicitly defined
+%%   section, a section introduced implicitly by defining its subsection, nor
+%%   an inline section.
 
 -spec keys(section(), config()) ->
   [key()] | none.
@@ -460,6 +464,10 @@ keys(Section, {toml, Store} = _Config) ->
   end.
 
 %% @doc List direct subsections of a section.
+%%
+%%   `none' is returned when `Section' is neither an explicitly defined
+%%   section, a section introduced implicitly by defining its subsection, nor
+%%   an inline section.
 
 -spec sections(section(), config()) ->
   [key()] | none.
