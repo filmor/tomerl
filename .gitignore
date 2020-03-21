@@ -8,3 +8,4 @@
 /doc/*.css
 /.erlang.mk
 /toml.d
+/_build/
