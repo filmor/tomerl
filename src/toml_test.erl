@@ -3,20 +3,30 @@
 -export([main/1]).
 
 
-main(_Args) ->
+main(Args) ->
     Input = list_to_binary(lists:reverse(read_all([]))),
 
-    {ok, Tokens, _} = toml_lexer:tokenize(Input),
-    {ok, Result} = toml_parser:parse(Tokens),
-    {ok, Store} = toml_dict:build_store(Result),
+    case Args of
+        ["test"] ->
+            {ok, Tokens, _} = toml_lexer:tokenize(Input),
+            {ok, Result} = toml_parser:parse(Tokens),
+            {ok, Store} = toml_dict:build_store(Result),
 
-    F = fun (A, B, C, D) -> to_json(A, B, C, D) end,
+            F = fun (A, B, C, D) -> to_json(A, B, C, D) end,
 
-    Json = toml_dict:fold(F, #{}, Store),
+            Json = toml_dict:fold(F, #{}, Store),
 
-    io:format("~s~n", [jsx:encode(Json)]),
+            io:format("~s~n", [jsx:encode(Json)]),
 
-    ok.
+            ok;
+        ["lex"] ->
+            {ok, Tokens, _} = toml_lexer:tokenize(Input),
+            io:format("~p~n", [Tokens]);
+        ["parse"] ->
+            {ok, Tokens, _} = toml_lexer:tokenize(Input),
+            {ok, Result} = toml_parser:parse(Tokens),
+            io:format("~p~n", [Result])
+    end.
 
 
 read_all(Acc) ->
