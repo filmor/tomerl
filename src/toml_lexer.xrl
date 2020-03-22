@@ -28,9 +28,9 @@ FRACTION = \.[0-9](_?[0-9])*
 EXPONENT = [eE]{INTEGER}
 FLOAT = {INTEGER}({FRACTION}|{FRACTION}{EXPONENT}|{EXPONENT})
 KEY_FLOAT = -?{POS_INTEGER}[eE]-?{POS_INTEGER}
-NAN = \+?nan
+NAN = \+nan
 NEG_NAN = -nan
-INF = \+?inf
+INF = \+inf
 NEG_INF = -inf
 
 YEAR  = ([0-9][0-9][0-9][0-9])
@@ -67,9 +67,11 @@ Rules.
 {DATE} : {token, {local_date, TokenLine, {TokenChars, local_date(TokenChars)}}}.
 {TIME} : {token, {local_time, TokenLine, local_time(TokenChars)}}.
 
-% these two are valid bare keys
+% these are valid bare keys
 true  : {token, {bool, TokenLine, true}}.
 false : {token, {bool, TokenLine, false}}.
+nan   : {token, {key_float, TokenLine, {TokenChars, nan}}}.
+inf   : {token, {key_float, TokenLine, {TokenChars, infinity}}}.
 
 {KEY_FLOAT} : {token, {key_float, TokenLine, {TokenChars, to_float(TokenChars)}}}.
 {KEY_INTEGER} : {token, {key_integer, TokenLine, {TokenChars, to_integer(TokenChars)}}}.
