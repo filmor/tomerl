@@ -28,6 +28,10 @@ FRACTION = \.[0-9](_?[0-9])*
 EXPONENT = [eE]{INTEGER}
 FLOAT = {INTEGER}({FRACTION}|{FRACTION}{EXPONENT}|{EXPONENT})
 KEY_FLOAT = -?{POS_INTEGER}[eE]-?{POS_INTEGER}
+NAN = \+?nan
+NEG_NAN = -nan
+INF = \+?inf
+NEG_INF = -inf
 
 YEAR  = ([0-9][0-9][0-9][0-9])
 MONTH = (0[1-9]|1[0-2])
@@ -71,6 +75,10 @@ false : {token, {bool, TokenLine, false}}.
 {KEY_INTEGER} : {token, {key_integer, TokenLine, {TokenChars, to_integer(TokenChars)}}}.
 {FLOAT} : {token, {float, TokenLine, to_float(TokenChars)}}.
 {INTEGER} : {token, {integer, TokenLine, to_integer(TokenChars)}}.
+{NAN} : {token, {float, TokenLine, nan}}.
+{NEG_NAN} : {token, {float, TokenLine, negative_nan}}.
+{INF} : {token, {float, TokenLine, infinity}}.
+{NEG_INF} : {token, {float, TokenLine, negative_infinity}}.
 {BARE_KEY} : {token, {bare_key, TokenLine, TokenChars}}.
 
 {BASIC_STRING}   : {token, {basic_string, TokenLine, basic_string(TokenChars)}}.
