@@ -45,6 +45,7 @@ SEC  = ([0-5][0-9]|60)
 DATE = {YEAR}-{MONTH}-{DAY}
 TIME = {HOUR}:{MIN}:{SEC}(\.[0-9]+)?
 TZOFFSET = (Z|[+-]{HOUR}:{MIN})
+DTSEP = [T\s]
 
 %%%---------------------------------------------------------------------------
 
@@ -64,8 +65,8 @@ Rules.
 ,  : {token, {',', TokenLine}}.
 \r?\n : {token, {nl, TokenLine}}.
 
-{DATE}T{TIME}{TZOFFSET} : {token, {datetime_tz, TokenLine, datetime_tz(TokenChars)}}.
-{DATE}T{TIME} : {token, {local_datetime, TokenLine, local_datetime(TokenChars)}}.
+{DATE}{DTSEP}{TIME}{TZOFFSET} : {token, {datetime_tz, TokenLine, datetime_tz(TokenChars)}}.
+{DATE}{DTSEP}{TIME} : {token, {local_datetime, TokenLine, local_datetime(TokenChars)}}.
 % local date is a valid bare key
 {DATE} : {token, {local_date, TokenLine, {TokenChars, local_date(TokenChars)}}}.
 {TIME} : {token, {local_time, TokenLine, local_time(TokenChars)}}.
@@ -158,7 +159,7 @@ datetime_tz(String) ->
   end.
 
 local_datetime(String) ->
-  [Date, Time] = string:tokens(String, "T"),
+  [Date, Time] = string:tokens(String, "T "),
   {local_date(Date), local_time(Time)}.
 
 local_date(String) ->
