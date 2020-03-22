@@ -198,6 +198,9 @@
 %% }}}
 %%----------------------------------------------------------
 
+-export([main/1]).
+main(Args) -> toml_test:main(Args).
+
 %%%---------------------------------------------------------------------------
 %%% parser wrappers
 %%%---------------------------------------------------------------------------
@@ -283,7 +286,7 @@ accept_all(_Section, _Key, _Value, _Arg) ->
 build_config(Directives, Fun, Arg) ->
   case toml_dict:build_store(Directives) of
     {ok, Store} ->
-      EmptyConfig = dict:store([], empty_section(), dict:new()),
+      EmptyConfig = #{ [] => empty_section() },
       try toml_dict:fold(fun build_config/4, {Fun, Arg, EmptyConfig}, Store) of
         {_, _, Config} -> {ok, {toml, Config}}
       catch
