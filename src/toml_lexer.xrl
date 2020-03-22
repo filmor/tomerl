@@ -23,6 +23,9 @@ LITERAL_STRING_ML = '''('?'?[^'])*'''
 POS_INTEGER = ([0-9]|[1-9](_?[0-9])+)
 INTEGER = [+-]?{POS_INTEGER}
 KEY_INTEGER = -?{POS_INTEGER}
+HEX_INTEGER = 0x[0-9a-fA-F_]+
+OCT_INTEGER = 0o[0-7_]+
+BIN_INTEGER = 0b[01_]+
 
 FRACTION = \.[0-9](_?[0-9])*
 EXPONENT = [eE]{INTEGER}
@@ -77,6 +80,11 @@ inf   : {token, {key_float, TokenLine, {TokenChars, infinity}}}.
 {KEY_INTEGER} : {token, {key_integer, TokenLine, {TokenChars, to_integer(TokenChars)}}}.
 {FLOAT} : {token, {float, TokenLine, to_float(TokenChars)}}.
 {INTEGER} : {token, {integer, TokenLine, to_integer(TokenChars)}}.
+{HEX_INTEGER} : {token, {integer, TokenLine, to_integer(TokenChars)}}.
+{BIN_INTEGER} : {token, {integer, TokenLine, to_integer(TokenChars)}}.
+{OCT_INTEGER} : {token, {integer, TokenLine, to_integer(TokenChars)}}.
+
+
 {NAN} : {token, {float, TokenLine, nan}}.
 {NEG_NAN} : {token, {float, TokenLine, negative_nan}}.
 {INF} : {token, {float, TokenLine, infinity}}.
@@ -110,9 +118,19 @@ tokenize(String) ->
 to_integer("+" ++ String) ->
   to_integer(String);
 to_integer("-" ++ String) ->
-  -to_integer(String);
+  to_integer(String);
+to_integer("0b" ++ String) ->
+  to_integer(String, 2);
+to_integer("0o" ++ String) ->
+  to_integer(String, 8);
+to_integer("0x" ++ String) ->
+  to_integer(String, 16);
 to_integer(String) ->
-  list_to_integer([C || C <- String, C /= $_]).
+  to_integer(String, 10).
+
+to_integer(String, Base) ->
+  list_to_integer([C || C <- String, C /= $_], Base).
+
 
 to_float(String) ->
   StripUnderscore = [C || C <- String, C /= $_],
