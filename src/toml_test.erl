@@ -16,9 +16,13 @@ main(Args) ->
 
             Json = toml_dict:fold(F, #{}, Store),
 
-            io:format("~s~n", [jsx:encode(Json)]),
+            io:format("~s~n", [jsx:encode(Json)]);
+        ["convert"] ->
+            {ok, Tokens, _} = toml_lexer:tokenize(Input),
+            {ok, Result} = toml_parser:parse(Tokens),
+            {ok, Res} = toml_convert:do(Result),
 
-            ok;
+            io:format("~p~n", [Res]);
         ["lex"] ->
             {ok, Tokens, _} = toml_lexer:tokenize(Input),
             io:format("~p~n", [Tokens]);
@@ -41,16 +45,15 @@ to_json(Path, Key, Obj, Acc) ->
 
 
 set([H|T], Key, Value, Acc) ->
-    H0 = list_to_binary(H),
-    Current = maps:get(H0, Acc, #{}),
-    Acc#{ H0 => set(T, Key, Value, Current) };
+    Current = maps:get(H, Acc, #{}),
+    Acc#{ H => set(T, Key, Value, Current) };
 set([], Key, Value, Acc) ->
-    Acc#{ list_to_binary(Key) => Value }.
+    Acc#{ Key => Value }.
 
 
 convert_value(section) ->
     #{};
-convert_value(Other) ->
+convert_value({_, _} = Other) ->
     {Type, Value} = case Other of
         {string, S} ->
             {string, unicode:characters_to_binary(S, unicode, utf8)};
@@ -58,6 +61,13 @@ convert_value(Other) ->
             {array, lists:map(fun (V) -> convert_value(V) end, Vals)};
         {X, Float} when X =:= float; X =:= integer ->
             {X, list_to_binary(io_lib:format("~p", [Float]))}
+    end,
+    #{ type => Type, value => Value };
+convert_value(Value) ->
+    Type = if
+        is_binary(Value) -> string;
+        is_float(Value) -> float;
+        is_integer(Value) -> integer
     end,
     #{ type => Type, value => Value }.
 
