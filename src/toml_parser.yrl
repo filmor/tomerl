@@ -31,7 +31,7 @@ toml -> root_section              : '$1'.
 toml -> root_section section_list : lists:flatten(['$1', lists:reverse('$2')]).
 toml ->              section_list : lists:flatten(lists:reverse('$1')).
 
-root_section -> section_body : {table, 0, [], '$1'}.
+root_section -> section_body : [{table, 1, [], '$1'}].
 
 section_list -> section : ['$1'].
 section_list -> section_list section : ['$2' | '$1'].
@@ -125,26 +125,33 @@ inline_kv_list -> inline_kv_list ',' key_value : to_map('$3', '$1').
 
 Erlang code.
 
+-record(asdf, {}).
+
 value({_TermName, Line, {_RawValue, ParsedValue}}) ->
   {ParsedValue, Line};
 
 value({_TermName, Line, Value}) ->
   {Value, Line}.
 
+-spec line({_, pos_integer(), _}) -> pos_integer();
+          ({_, pos_integer()}) -> pos_integer().
 line({_, Line, _}) ->
   Line;
 line({_, Line}) ->
   Line.
 
+-spec string_value(_) -> {binary(), pos_integer()}.
 string_value({_, Line, {RawValue, _}}) ->
   {unicode:characters_to_binary(RawValue), Line};
 string_value({_, Line, Val}) ->
   {unicode:characters_to_binary(Val), Line}.
 
+-spec key_string_value(_) -> binary().
 key_string_value(Token) ->
   {Str, _} = string_value(Token),
   Str.
 
+-spec to_map({key_value, [binary()], {_, _}}, #{ binary() => _ }) -> #{ binary() => _ }.
 to_map({key_value, [H], {Value, _Line}}, Map) ->
   case maps:is_key(H, Map) of
     true ->

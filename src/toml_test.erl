@@ -6,15 +6,14 @@
 main(Args) ->
     Input = list_to_binary(lists:reverse(read_all([]))),
 
-    case Args of
+    Args1 = case Args of [] -> ["test"]; _ -> Args end,
+
+    case Args1 of
         ["test"] ->
             {ok, Tokens, _} = toml_lexer:tokenize(Input),
             {ok, Result} = toml_parser:parse(Tokens),
-            {ok, Store} = toml_dict:build_store(Result),
-
-            F = fun (A, B, C, D) -> to_json(A, B, C, D) end,
-
-            Json = toml_dict:fold(F, #{}, Store),
+            {ok, Res} = toml_convert:do(Result),
+            Json = to_json(Res),
 
             io:format("~s~n", [jsx:encode(Json)]);
         ["convert"] ->
@@ -40,34 +39,27 @@ read_all(Acc) ->
     end.
 
 
-to_json(Path, Key, Obj, Acc) ->
-    set(Path, Key, convert_value(Obj), Acc).
+to_json(Map) when is_map(Map) ->
+    maps:fold(
+        fun (K, V, Res) ->
+            Res#{ K => to_json(V) }
+        end,
+        #{},
+        Map
+    );
 
+to_json([]) ->
+    [];
 
-set([H|T], Key, Value, Acc) ->
-    Current = maps:get(H, Acc, #{}),
-    Acc#{ H => set(T, Key, Value, Current) };
-set([], Key, Value, Acc) ->
-    Acc#{ Key => Value }.
+to_json([H|T]) ->
+    [to_json(H) | to_json(T)];
 
+to_json(Value) when is_binary(Value) ->
+    #{ type => string, value => Value };
 
-convert_value(section) ->
-    #{};
-convert_value({_, _} = Other) ->
-    {Type, Value} = case Other of
-        {string, S} ->
-            {string, unicode:characters_to_binary(S, unicode, utf8)};
-        {array, Vals} when is_list(Vals) ->
-            {array, lists:map(fun (V) -> convert_value(V) end, Vals)};
-        {X, Float} when X =:= float; X =:= integer ->
-            {X, list_to_binary(io_lib:format("~p", [Float]))}
-    end,
-    #{ type => Type, value => Value };
-convert_value(Value) ->
+to_json(Value) ->
     Type = if
-        is_binary(Value) -> string;
         is_float(Value) -> float;
         is_integer(Value) -> integer
     end,
-    #{ type => Type, value => Value }.
-
+    #{ type => Type, value => list_to_binary(io_lib:format("~p", [Value])) }.

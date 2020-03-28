@@ -119,7 +119,7 @@ tokenize(String) ->
 to_integer("+" ++ String) ->
   to_integer(String);
 to_integer("-" ++ String) ->
-  to_integer(String);
+  -to_integer(String);
 to_integer("0b" ++ String) ->
   to_integer(String, 2);
 to_integer("0o" ++ String) ->
