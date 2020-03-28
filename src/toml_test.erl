@@ -57,6 +57,21 @@ to_json([H|T]) ->
 to_json(Value) when is_binary(Value) ->
     #{ type => string, value => Value };
 
+to_json(Value) when is_boolean(Value) ->
+    #{ type => bool, value => atom_to_binary(Value, utf8) };
+
+to_json(nan) ->
+    #{ type => float, value => nan };
+
+to_json(negative_nan) ->
+    #{ type => float, value => <<"-nan">>};
+
+to_json(infinity) ->
+    #{ type => float, value => <<"inf">>};
+
+to_json(negative_infinity) ->
+    #{ type => float, value => <<"-inf">>};
+
 to_json(Value) ->
     Type = if
         is_float(Value) -> float;

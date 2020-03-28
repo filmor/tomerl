@@ -96,9 +96,9 @@ value -> inline_table : '$1'.
 array -> maybe_space '[' nls                        maybe_space ']' :
   {[], line('$2')}.
 array -> maybe_space '[' nls value_list nls         maybe_space ']' :
-  {lists:reverse('$4'), line('$2')}.
+  {'$4', line('$2')}.
 array -> maybe_space '[' nls value_list nls ',' nls maybe_space ']' :
-  {lists:reverse('$4'), line('$2')}.
+  {'$4', line('$2')}.
 
 value_list -> value : [element(1, '$1')].
 value_list -> value_list nls ',' nls value : [element(1, '$5') | '$1'].
