@@ -68,17 +68,17 @@ Rules.
 {DATE}{DTSEP}{TIME}{TZOFFSET} : {token, {datetime_tz, TokenLine, datetime_tz(TokenChars)}}.
 {DATE}{DTSEP}{TIME} : {token, {local_datetime, TokenLine, local_datetime(TokenChars)}}.
 % local date is a valid bare key
-{DATE} : {token, {local_date, TokenLine, {TokenChars, local_date(TokenChars)}}}.
+{DATE} : {token, {maybe_key, TokenLine, {local_date, TokenChars, local_date(TokenChars)}}}.
 {TIME} : {token, {local_time, TokenLine, local_time(TokenChars)}}.
 
 % these are valid bare keys
 true  : {token, {bool, TokenLine, true}}.
 false : {token, {bool, TokenLine, false}}.
-nan   : {token, {key_float, TokenLine, {TokenChars, nan}}}.
-inf   : {token, {key_float, TokenLine, {TokenChars, infinity}}}.
+nan   : {token, {maybe_key, TokenLine, {float, TokenChars, nan}}}.
+inf   : {token, {maybe_key, TokenLine, {float, TokenChars, infinity}}}.
 
-{KEY_FLOAT} : {token, {key_float, TokenLine, {TokenChars, to_float(TokenChars)}}}.
-{KEY_INTEGER} : {token, {key_integer, TokenLine, {TokenChars, to_integer(TokenChars)}}}.
+{KEY_FLOAT} : {token, {maybe_key, TokenLine, {float, TokenChars, to_float(TokenChars)}}}.
+{KEY_INTEGER} : {token, {maybe_key, TokenLine, {integer, TokenChars, to_integer(TokenChars)}}}.
 {FLOAT} : {token, {float, TokenLine, to_float(TokenChars)}}.
 {INTEGER} : {token, {integer, TokenLine, to_integer(TokenChars)}}.
 {HEX_INTEGER} : {token, {integer, TokenLine, to_integer(TokenChars)}}.
@@ -151,7 +151,7 @@ datetime_tz(String) ->
   StrLen = length(String),
   case lists:last(String) of
     $Z ->
-      Timezone = "Z",
+      Timezone = <<"Z">>,
       {local_datetime(string:substr(String, 1, StrLen - 1)), Timezone};
     _ ->
       Timezone = string:substr(String, 1 + StrLen - 6, 6),

@@ -17,10 +17,8 @@ Terminals
   '[' ']' '{' '}'
   '.' '=' ','
   nl space
-  datetime_tz local_datetime local_date local_time
-  bool key_float float key_integer integer bare_key
-  basic_string literal_string
-  basic_string_ml literal_string_ml
+  datetime_tz local_datetime local_date local_time bool maybe_key float integer
+  bare_key basic_string literal_string basic_string_ml literal_string_ml
 .
 
 Rootsymbol toml.
@@ -69,9 +67,8 @@ key -> key_component '.' key : ['$1' | '$3'].
 key_component -> bare_key       : key_string_value('$1').
 key_component -> basic_string   : key_string_value('$1').
 key_component -> literal_string : key_string_value('$1').
-key_component -> key_integer    : key_string_value('$1').
+key_component -> maybe_key      : key_string_value('$1').
 key_component -> bool           : key_string_value('$1').
-key_component -> key_float      : key_string_value('$1').
 
 %%----------------------------------------------------------
 
@@ -79,8 +76,7 @@ value -> basic_string      : string_value('$1').
 value -> basic_string_ml   : string_value('$1').
 value -> literal_string    : string_value('$1').
 value -> literal_string_ml : string_value('$1').
-value -> key_integer       : value('$1').
-value -> key_float         : value('$1').
+value -> maybe_key         : value('$1').
 value -> integer           : value('$1').
 value -> float             : value('$1').
 value -> bool              : value('$1').
@@ -127,7 +123,7 @@ Erlang code.
 
 -record(asdf, {}).
 
-value({_TermName, Line, {_RawValue, ParsedValue}}) ->
+value({maybe_key, Line, {_Type, _RawValue, ParsedValue}}) ->
   {ParsedValue, Line};
 
 value({_TermName, Line, Value}) ->
@@ -141,7 +137,7 @@ line({_, Line}) ->
   Line.
 
 -spec string_value(_) -> {binary(), pos_integer()}.
-string_value({_, Line, {RawValue, _}}) ->
+string_value({maybe_key, Line, {_Type, RawValue, _}}) ->
   {unicode:characters_to_binary(RawValue), Line};
 string_value({_, Line, Val}) ->
   {unicode:characters_to_binary(Val), Line}.
