@@ -14,13 +14,18 @@
 
 
 do(Ast) ->
-    State = lists:foldl(
-        fun do/2,
-        #state{},
-        Ast
-    ),
+    try
+        State = lists:foldl(
+            fun do/2,
+            #state{},
+            Ast
+        ),
 
-    {ok, reverse_lists(State#state.result)}.
+        {ok, reverse_lists(State#state.result)}
+    catch
+        _:Reason ->
+            {error, {semantic, Reason}}
+    end.
 
 
 do({table, Line, Key, Table}, State) ->

@@ -10,17 +10,12 @@ main(Args) ->
 
     case Args1 of
         ["test"] ->
-            {ok, Tokens, _} = toml_lexer:tokenize(Input),
-            {ok, Result} = toml_parser:parse(Tokens),
-            {ok, Res} = toml_convert:do(Result),
+            {ok, Res} = toml:parse(Input),
             Json = to_json(Res),
 
             io:format("~s~n", [jsx:encode(Json)]);
         ["convert"] ->
-            {ok, Tokens, _} = toml_lexer:tokenize(Input),
-            {ok, Result} = toml_parser:parse(Tokens),
-            {ok, Res} = toml_convert:do(Result),
-
+            {ok, Res} = toml:parse(Input),
             io:format("~p~n", [Res]);
         ["lex"] ->
             {ok, Tokens, _} = toml_lexer:tokenize(Input),
