@@ -27,8 +27,16 @@ the data can be read in Erlang like this:
 >>> Data = #{
     <<"lipsum">> => <<"lorem ipsum dolor sit amet">>,
     <<"apples">> => #{ <<"count">> => 2 },
-    <<"berry">> => #{ <<"black">> => #{ has_some => true }}
+    <<"berry">> => #{ <<"black">> => #{ <<"has_some">> => true }}
 }.
+```
+
+To access the data, there is a simple `get` function that accepts lists of strings, binaries and atoms:
+
+```erlang
+{ok, true} = toml:get(Data, [berry, black, has_some]),
+{ok, 2} = toml:get(Data, ["apples", <<"count">>]),
+{error, not_found} = toml:get(Data, [something, undefined]).
 ```
 
 Documentation
