@@ -9,6 +9,8 @@
 %% parser wrappers
 -export([read_file/1, parse/1]).
 
+-export([get/2]).
+
 %% explaining errors
 -export([format_error/1]).
 
@@ -114,7 +116,7 @@ main(Args) -> toml_test:main(Args).
 %%%---------------------------------------------------------------------------
 
 %% @doc Parse a TOML file on disk.
--spec read_file(file:filename()) ->
+-spec read_file(file:name_all()) ->
   {ok, section()} | {error, ReadError | toml_error()}
   when ReadError :: file:posix() | badarg | terminated | system_limit.
 
@@ -125,7 +127,6 @@ read_file(File) ->
   end.
 
 %% @doc Parse a TOML config from a string.
-
 -spec parse(string() | binary() | iolist()) ->
   {ok, section()} | {error, toml_error()}.
 
@@ -145,6 +146,19 @@ parse(String) ->
 
 %% }}}
 %%----------------------------------------------------------
+
+-spec get(section(), [string() | binary() | atom()]) ->
+    {ok, value()} | {error, not_found}.
+get(Section, [H | T]) ->
+  case maps:find(ensure_binary(H), Section) of
+    {ok, Subsection} when T =:= [] orelse is_map(Subsection) ->
+      get(Subsection, T);
+    _ ->
+      {error, not_found}
+  end;
+
+get(Value, []) ->
+  {ok, Value}.
 
 %%%---------------------------------------------------------------------------
 %%% explaining errors
@@ -178,3 +192,55 @@ format_error(Reason) ->
     "unrecognized error: ",
     io_lib:print(Reason, 1, 16#ffffffff, -1)
   ]).
+
+
+ensure_binary(Atom) when is_atom(Atom) ->
+  atom_to_binary(Atom, utf8);
+ensure_binary(Binary) when is_binary(Binary) ->
+  Binary;
+ensure_binary(List) when is_list(List) ->
+  list_to_binary(List).
+
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-define(SIMPLE,
+"[section]\nkey = 1\n[section.sub_section]\nkey.sub_key = \"string\""
+).
+
+simple_parse_test() ->
+  Expected = #{
+    <<"section">> => #{
+      <<"key">> => 1,
+      <<"sub_section">> => #{
+        <<"key">> => #{
+          <<"sub_key">> => <<"string">>
+        }
+      }
+    }
+  },
+
+  ?assertMatch({ok, Expected}, toml:parse(?SIMPLE)).
+
+
+getter_test() ->
+  NestedMap = #{
+    <<"a">> => #{
+      <<"b">> => #{
+        <<"c">> => 1
+      },
+      <<"d">> => 2      
+    },
+    <<"e">> => 3
+  },
+
+  ?assertEqual({ok, 1}, get(NestedMap, [a, b, c])),
+  ?assertEqual({ok, 1}, get(NestedMap, [a, <<"b">>, c])),
+  ?assertEqual({ok, 1}, get(NestedMap, [a, b, "c"])),
+  ?assertEqual({ok, 1}, get(NestedMap, [<<"a">>, <<"b">>, <<"c">>])),
+  ?assertEqual({error, not_found}, get(NestedMap, [a, b, c, d])),
+  ?assertEqual({error, not_found}, get(NestedMap, [a, b, d, e])),
+  ?assertEqual({ok, 3}, get(NestedMap, [e])).
+
+-endif.
