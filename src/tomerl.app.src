@@ -1,7 +1,9 @@
 {application, tomerl, [
-  {description, "TOML parser"},
-  {vsn, "0.3.0"},
+  {description, "Erlang TOML Parser"},
+  {vsn, "0.4.0"},
   {registered, []},
   {modules, []},
-  {applications, [kernel, stdlib]}
+  {applications, [kernel, stdlib]},
+  {licenses, ["BSD-3-Clause"]},
+  {links, [{"Github", "https://github.com/filmor/tomerl"}]}
 ]}.
