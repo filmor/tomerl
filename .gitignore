@@ -1,11 +1,5 @@
-.*.swp
-*.beam
-*.plt
-/ebin/*.app
 /doc/edoc-info
 /doc/*.png
 /doc/*.html
 /doc/*.css
-/.erlang.mk
-/toml.d
 /_build/

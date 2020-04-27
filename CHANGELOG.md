@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Simple test escript `toml_test` to investigate partial parsing and as an
+- Simple test escript `tomerl_test` to investigate partial parsing and as an
   endpoint to [toml-test](https://github.com/BurntSushi/toml-test)
 - Implement support for non-finite floats (`inf`, `nan`) in the same way as
   [toml-elixir](https://github.com/bitwalker/toml-elixir)
@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validation function support
 
 ### Changed
+- Renamed to `tomerl`
 - Switch to [`rebar3`](https://rebar3.org)
 - Allow a space as the datetime separator (instead of only `T`)
 - Allow mixed type arrays

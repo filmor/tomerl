@@ -1,7 +1,7 @@
 TOML Parser for Erlang
 ======================
 
-`toml` is an Erlang library application for parsing
+`tomerl` is an Erlang library application for parsing
 [TOML](https://github.com/toml-lang/toml) data. It supports parsing version 1.0.0-rc1 of the TOML specification.
 
 Usage Example
@@ -22,7 +22,7 @@ has_some = true
 the data can be read in Erlang like this:
 
 ```erlang
-{ok, Data} = toml:read_file("config.toml").
+{ok, Data} = tomerl:read_file("config.toml").
 
 >>> Data = #{
     <<"lipsum">> => <<"lorem ipsum dolor sit amet">>,
@@ -34,9 +34,9 @@ the data can be read in Erlang like this:
 To access the data, there is a simple `get` function that accepts lists of strings, binaries and atoms:
 
 ```erlang
-{ok, true} = toml:get(Data, [berry, black, has_some]),
-{ok, 2} = toml:get(Data, ["apples", <<"count">>]),
-{error, not_found} = toml:get(Data, [something, undefined]).
+{ok, true} = tomerl:get(Data, [berry, black, has_some]),
+{ok, 2} = tomerl:get(Data, ["apples", <<"count">>]),
+{error, not_found} = tomerl:get(Data, [something, undefined]).
 ```
 
 Documentation

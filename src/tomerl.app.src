@@ -1,4 +1,4 @@
-{application, toml, [
+{application, tomerl, [
   {description, "TOML parser"},
   {vsn, "0.3.0"},
   {registered, []},

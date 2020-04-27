@@ -2,10 +2,10 @@
 @author Stanislaw Klekot <dozzie@jarowit.net>
 @title TOML parser
 @version 0.4.0
-@see toml
+@see tomlerl
 @doc
 
-`toml' is an Erlang library application for parsing
+`tomerl' is an Erlang library application for parsing
 <a href="https://github.com/toml-lang/toml" target="_parent">TOML</a>
 data. It supports parsing version 1.0.0-rc1 of the TOML
 specification.
@@ -27,7 +27,7 @@ has_some = true
 the data can be read in Erlang like this:
 
 ```erlang
-{ok, Data} = toml:read_file("config.toml").
+{ok, Data} = tomerl:read_file("config.toml").
 
 >>> Data = #{
     <<"lipsum">> => <<"lorem ipsum dolor sit amet">>,

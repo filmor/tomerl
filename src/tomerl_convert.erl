@@ -1,4 +1,4 @@
--module(toml_convert).
+-module(tomerl_convert).
 
 -export([
     do/1

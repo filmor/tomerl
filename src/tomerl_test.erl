@@ -1,4 +1,4 @@
--module(toml_test).
+-module(tomerl_test).
 
 -export([main/1]).
 
@@ -10,19 +10,19 @@ main(Args) ->
 
     case Args1 of
         ["test"] ->
-            {ok, Res} = toml:parse(Input),
+            {ok, Res} = tomerl:parse(Input),
             Json = to_json(Res),
 
             io:format("~s~n", [jsx:encode(Json)]);
         ["convert"] ->
-            {ok, Res} = toml:parse(Input),
+            {ok, Res} = tomerl:parse(Input),
             io:format("~p~n", [Res]);
         ["lex"] ->
-            {ok, Tokens, _} = toml_lexer:tokenize(Input),
+            {ok, Tokens, _} = tomerl_lexer:tokenize(Input),
             io:format("~p~n", [Tokens]);
         ["parse"] ->
-            {ok, Tokens, _} = toml_lexer:tokenize(Input),
-            {ok, Result} = toml_parser:parse(Tokens),
+            {ok, Tokens, _} = tomerl_lexer:tokenize(Input),
+            {ok, Result} = tomerl_parser:parse(Tokens),
             io:format("~p~n", [Result])
     end.
 

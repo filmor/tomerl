@@ -4,7 +4,7 @@
 %%% @end
 %%%---------------------------------------------------------------------------
 
--module(toml).
+-module(tomerl).
 
 %% parser wrappers
 -export([read_file/1, parse/1]).
@@ -109,7 +109,7 @@
 %%----------------------------------------------------------
 
 -export([main/1]).
-main(Args) -> toml_test:main(Args).
+main(Args) -> tomerl_test:main(Args).
 
 %%%---------------------------------------------------------------------------
 %%% parser wrappers
@@ -132,11 +132,11 @@ read_file(File) ->
 
 parse(String) ->
   % the grammar assumes that the input ends with newline character
-  case toml_lexer:tokenize(String) of
+  case tomerl_lexer:tokenize(String) of
     {ok, Tokens, _EndLine} ->
-      case toml_parser:parse(Tokens) of
+      case tomerl_parser:parse(Tokens) of
         {ok, Result} ->
-          toml_convert:do(Result);
+          tomerl_convert:do(Result);
         {error, {LineNumber, _ParserModule, _Message}} ->
           {error, {parse, LineNumber}}
       end;
@@ -221,7 +221,7 @@ simple_parse_test() ->
     }
   },
 
-  ?assertMatch({ok, Expected}, toml:parse(?SIMPLE)).
+  ?assertMatch({ok, Expected}, tomerl:parse(?SIMPLE)).
 
 
 getter_test() ->
