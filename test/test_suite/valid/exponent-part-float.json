@@ -1,6 +1,5 @@
 {
-    "million": {"type": "float", "value": "1000000"},
+    "million": {"type": "float", "value": "1000000.0"},
     "minustenth": {"type": "float", "value": "-0.1"},
-    "beast": {"type": "float", "value": "666"}
+    "beast": {"type": "float", "value": "666.0"}
 }
-

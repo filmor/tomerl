@@ -53,64 +53,59 @@ to_json([H|T]) ->
     [to_json(H) | to_json(T)];
 
 to_json(Value) when is_binary(Value) ->
-    #{ <<"type">> => <<"string">>, <<"value">> => Value };
+    value(string, Value);
 
 to_json(Value) when is_boolean(Value) ->
-    #{ <<"type">> => <<"bool">>, <<"value">> => atom_to_binary(Value, utf8) };
+    value(bool, atom_to_list(Value));
 
-to_json(nan) ->
-    #{ <<"type">> => <<"float">>, <<"value">> => <<"nan">> };
-
-to_json(negative_nan) ->
-    #{ <<"type">> => <<"float">>, <<"value">> => <<"-nan">>};
-
-to_json(infinity) ->
-    #{ <<"type">> => <<"float">>, <<"value">> => <<"inf">>};
-
-to_json(negative_infinity) ->
-    #{ <<"type">> => <<"float">>, <<"value">> => <<"-inf">>};
+to_json(nan) -> value(float, "nan");
+to_json(negative_nan) -> value(float, "-nan");
+to_json(infinity) -> value(float, "inf");
+to_json(negative_infinity) -> value(float, "-inf");
 
 to_json({{Y, M, D}, {H, Mi, S}}) ->
-    #{
-        <<"type">> => <<"datetime-local">>,
-        <<"value">> => iolist_to_binary(
-            io_lib:format(
-                "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B",
-                [Y, M, D, H, Mi, S]
-            )
-        )
-    };
+    value(
+        "datetime-local",
+        "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B",
+        [Y, M, D, H, Mi, S]
+    );
 
 to_json({{{Y, M, D}, {H, Mi, S}}, Tz}) ->
-    #{
-        <<"type">> => <<"datetime">>,
-        <<"value">> => iolist_to_binary(
-            io_lib:format(
-                "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B~s",
-                [Y, M, D, H, Mi, S, Tz]
-            )
-        )
-    };
+    value(
+        "datetime",
+        "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B~s",
+        [Y, M, D, H, Mi, S, Tz]
+    );
 
 to_json({Y, M, D}) when Y > 24 ->
-    #{
-        <<"type">> => <<"date">>,
-        <<"value">> => list_to_binary(
-            io_lib:format("~4..0B-~2..0B-~2..0B", [Y, M, D])
-        )
-    };
+    value(
+        date,
+        "~4..0B-~2..0B-~2..0B",
+        [Y, M, D]
+    );
 
 to_json({H, Mi, S}) ->
-    #{
-        <<"type">> => <<"time">>,
-        <<"value">> => list_to_binary(
-            io_lib:format("~2..0B:~2..0B:~2..0B", [H, Mi, S])
-        )
-    };
+    value(
+        time,
+        "~2..0B:~2..0B:~2..0B",
+        [H, Mi, S]
+    );
 
-to_json(Value) ->
-    Type = if
-        is_float(Value) -> <<"float">>;
-        is_integer(Value) -> <<"integer">>
-    end,
-    #{ <<"type">> => Type, <<"value">> => iolist_to_binary(io_lib:format("~p", [Value])) }.
+to_json(Value) when is_float(Value), abs(Value) >= 1.0e7 orelse abs(Value) =< 1.0e-3 ->
+    value(float, "~e", [Value]);
+
+to_json(Value) when is_float(Value) ->
+    value(float, float_to_list(Value, [compact, {decimals, 10}]));
+
+to_json(Value) when is_integer(Value) ->
+    value(integer, "~p", [Value]).
+
+value(Type, Value) when is_list(Type) ->
+    value(list_to_binary(Type), Value);
+value(Type, Value) when is_atom(Type) ->
+    value(atom_to_binary(Type, utf8), Value);
+value(Type, Value) ->
+    #{ <<"type">> => Type, <<"value">> => iolist_to_binary(Value) }.
+
+value(Type, Format, Args) ->
+    value(Type, io_lib:format(Format, Args)).
