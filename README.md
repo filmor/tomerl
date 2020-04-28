@@ -3,9 +3,13 @@ TOML Parser for Erlang
 
 [![CI](https://github.com/filmor/tomerl/workflows/CI/badge.svg)](https://github.com/filmor/tomerl/actions)
 [![Hex](https://img.shields.io/hexpm/v/tomerl)](https://hex.pm/packages/tomerl)
+[![TOML](https://img.shields.io/badge/TOML-1.0.0--rc1-blue)](https://github.com/toml-lang/toml)
 
-`tomerl` is an Erlang library application for parsing
-[TOML](https://github.com/toml-lang/toml) data. It supports parsing version 1.0.0-rc1 of the TOML specification.
+`tomerl` is an Erlang library for parsing
+[TOML 1.0.0-rc1](https://github.com/toml-lang/toml) data, forked from [toml](https://github.com/dozzie/toml)
+by Stanisław Klekot.
+
+The documentation at [Hexdocs](https://hexdocs.pm/tomerl) is updated on release, it can be generated locally via `rebar3 edoc`.
 
 Usage Example
 -------------
@@ -41,25 +45,3 @@ To access the data, there is a simple `get` function that accepts lists of strin
 {ok, 2} = tomerl:get(Data, ["apples", <<"count">>]),
 {error, not_found} = tomerl:get(Data, [something, undefined]).
 ```
-
-Documentation
--------------
-
-`toml` is documented using EDoc. A local copy is generated using `rebar3 doc`
-in the  `./doc/` directory. The documentation at 
-at <https://hexdocs.pm/toml-erlang> is update on release.
-
-Known limitations
------------------
-
-* Types conveying time only store second precision (fraction of a second is
-  truncated)
-
-Contact and License
--------------------
-
-This library is based on the initial work by Stanislaw Klekot <dozzie at jarowit.net>.
-It is distributed under the 3-clause BSD license. Check the COPYING file for
-details.
-
-[toml]: https://github.com/toml-lang/toml
