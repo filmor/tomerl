@@ -121,8 +121,6 @@ inline_kv_list -> inline_kv_list ',' key_value : to_map('$3', '$1').
 
 Erlang code.
 
--record(asdf, {}).
-
 value({maybe_key, Line, {_Type, _RawValue, ParsedValue}}) ->
   {ParsedValue, Line};
 
@@ -138,9 +136,9 @@ line({_, Line}) ->
 
 -spec string_value(_) -> {binary(), pos_integer()}.
 string_value({maybe_key, Line, {_Type, RawValue, _}}) ->
-  {unicode:characters_to_binary(RawValue), Line};
+  {to_binary(RawValue), Line};
 string_value({_, Line, Val}) ->
-  {unicode:characters_to_binary(Val), Line}.
+  {to_binary(Val), Line}.
 
 -spec key_string_value(_) -> binary().
 key_string_value(Token) ->
@@ -158,6 +156,16 @@ to_map({key_value, [H], {Value, _Line}}, Map) ->
   end;
 to_map({key_value, [H|T], Value}, Map) ->
   Map#{ H => to_map({key_value, T, Value}, maps:get(H, Map, #{})) }.
+
+
+to_binary(List) ->
+  case unicode:characters_to_binary(List) of
+    {error, _Parsed, _RestData} ->
+      % TODO: Show line number in error
+      error(invalid_string);
+    Res when is_binary(Res) ->
+      Res
+  end.
 
 %%%---------------------------------------------------------------------------
 %%% vim:ft=erlang

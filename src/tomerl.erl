@@ -131,17 +131,21 @@ read_file(File) ->
   {ok, section()} | {error, toml_error()}.
 
 parse(String) ->
-  % the grammar assumes that the input ends with newline character
-  case tomerl_lexer:tokenize(String) of
-    {ok, Tokens, _EndLine} ->
-      case tomerl_parser:parse(Tokens) of
-        {ok, Result} ->
-          tomerl_convert:do(Result);
-        {error, {LineNumber, _ParserModule, _Message}} ->
-          {error, {parse, LineNumber}}
-      end;
-    {error, {LineNumber, _LexerModule, _Message}, _} ->
-      {error, {tokenize, LineNumber}}
+  try
+    case tomerl_lexer:tokenize(String) of
+      {ok, Tokens, _EndLine} ->
+        case tomerl_parser:parse(Tokens) of
+          {ok, Result} ->
+            tomerl_convert:do(Result);
+          {error, {LineNumber, _ParserModule, _Message}} ->
+            {error, {parse, LineNumber}}
+        end;
+      {error, {LineNumber, _LexerModule, _Message}, _} ->
+        {error, {tokenize, LineNumber}}
+    end
+  catch
+    error:Reason ->
+      {error, Reason}
   end.
 
 %% }}}

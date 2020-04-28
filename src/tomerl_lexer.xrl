@@ -9,16 +9,17 @@ COMMENT = #[^\n]*
 HEX = [0-9a-fA-F]
 HEX4 = {HEX}{HEX}{HEX}{HEX}
 HEX8 = {HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}
-CHAR = [^\\"\x00-\x1f]
+CHAR = [^\\"\x00-\x1f\x7f]
 ESC_CHAR = \\[btnfr"\\\\]
 U4 = \\u{HEX4}
 U8 = \\U{HEX8}
 
 BARE_KEY = [a-zA-Z0-9_-]+
-LITERAL_STRING = '[^\']*'
+LITERAL_STRING = '[^\'\x00-\x1f\x7f]*'
 BASIC_STRING = "({CHAR}|{ESC_CHAR}|{U4}|{U8})*"
 BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""
-LITERAL_STRING_ML = '''('?'?[^'])*'''
+% 0x00 - 0x1f and 0x7f are always forbidden, but here we need to allow \n i.e. \x0a
+LITERAL_STRING_ML = '''('?'?[^'\x00-\x09\x0b-\x1f\x7f])*'''
 
 POS_INTEGER = ([0-9]|[1-9](_?[0-9])+)
 INTEGER = [+-]?{POS_INTEGER}
