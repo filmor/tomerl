@@ -2,7 +2,7 @@
 @author Stanislaw Klekot <dozzie@jarowit.net>
 @title TOML parser
 @version 0.4.0
-@see tomlerl
+@see tomerl
 @doc
 
 `tomerl' is an Erlang library application for parsing
