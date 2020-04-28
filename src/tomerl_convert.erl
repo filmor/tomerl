@@ -53,10 +53,13 @@ do({array_table, _Line, Key, Table}, State) ->
     % 3. Add Key to the currently known "array_tables"
     % 4. Set Key as current_table
     AT = ordsets:add_element(lists:reverse(Key), State#state.array_tables),
+
     KeysToDrop = [K || K <- maps:keys(State#state.tables), lists:prefix(Key, K)],
+
     T = maps:without(KeysToDrop, State#state.tables),
-    State1 = State#state{array_tables=AT, tables=T},
-    do_set(array, Key, Table, State1);
+
+    State1 = do_set(array, Key, Table, State),
+    State1#state{array_tables=AT, tables=T};
 
 do(Entry, State) ->
     error({Entry, State}).
