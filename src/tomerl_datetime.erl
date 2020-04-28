@@ -9,6 +9,10 @@
 
     with_offset/2,
 
+    to_calendar/1,
+    millisecond/1,
+    offset/1,
+
     type/1,
     format/1
 ]).
@@ -75,25 +79,32 @@
     t/0
 ]).
 
+-spec new_time(hour(), minute(), second()) -> time().
 new_time(H, M, S) ->
     #time{hour=H, minute=M, second=S}.
 
+-spec new_time(hour(), minute(), second(), millisecond()) -> time().
 new_time(H, M, S, Ms) ->
     #time_ms{hour=H, minute=M, second=S, millisecond=Ms}.
 
+-spec new_date(year(), month(), day()) -> date().
 new_date(Y, M, D) ->
     #date{year=Y, month=M, day=D}.
 
+-spec new_datetime(date(), time()) -> datetime().
 new_datetime(Date, Time) ->
     #datetime{date=Date, time=Time}.
 
+-spec new_datetime(date(), time(), offset()) -> datetime_offset().
 new_datetime(Date, Time, Offset) ->
     #datetime_offset{date=Date, time=Time, offset=Offset}.
 
+-spec with_offset(datetime(), offset()) -> datetime_offset().
 with_offset(#datetime{date=Date, time=Time}, Offset) ->
     new_datetime(Date, Time, Offset).
 
 
+-spec type(_) -> time | date | datetime | datetime_offset | undefined.
 type(#time{}) ->
     time;
 type(#time_ms{}) ->
@@ -108,6 +119,41 @@ type(_) ->
     undefined.
 
 
+-spec to_calendar(time()) -> calendar:time();
+                 (date()) -> calendar:date();
+                 (datetime()) -> calendar:datetime();
+                 (datetime_offset()) -> calendar:datetime().
+to_calendar(#time{hour=H, minute=M, second=S}) ->
+    {H, M, S};
+to_calendar(#time_ms{hour=H, minute=M, second=S}) ->
+    {H, M, S};
+to_calendar(#date{year=Y, month=M, day=D}) ->
+    {Y, M, D};
+to_calendar(#datetime{date=Date, time=Time}) ->
+    {to_calendar(Date), to_calendar(Time)};
+to_calendar(#datetime_offset{date=Date, time=Time}) ->
+    {to_calendar(Date), to_calendar(Time)}.
+
+
+-spec offset(datetime_offset()) -> offset().
+offset(#datetime_offset{offset=Offset}) ->
+    Offset;
+offset(_) ->
+    undefined.
+
+
+-spec millisecond(datetime() | datetime_offset() | time()) -> millisecond().
+millisecond(#datetime{time=Time}) ->
+    millisecond(Time);
+millisecond(#datetime_offset{time=Time}) ->
+    millisecond(Time);
+millisecond(#time{}) ->
+    0;
+millisecond(#time_ms{millisecond=Ms}) ->
+    Ms.
+
+
+-spec format(datetime() | datetime_offset() | time() | date()) -> iolist().
 format(#time{hour=H, minute=M, second=S}) ->
     io_lib:format("~2..0B:~2..0B:~2..0B", [H, M, S]);
 
