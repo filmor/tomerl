@@ -152,29 +152,51 @@ datetime_tz(String) ->
   StrLen = length(String),
   case lists:last(String) of
     $Z ->
-      Timezone = <<"Z">>,
-      {local_datetime(string:substr(String, 1, StrLen - 1)), Timezone};
+      tomerl_datetime:with_offset(
+        local_datetime(string:substr(String, 1, StrLen - 1)),
+        z
+      );
     _ ->
       Timezone = string:substr(String, 1 + StrLen - 6, 6),
-      {local_datetime(string:substr(String, 1, StrLen - 6)), Timezone}
+      [HH, MM] = string:tokens(Timezone, ":"),
+      OffsetHours = list_to_integer(HH),
+      OffsetMinutes = list_to_integer(MM),
+      Offset = abs(OffsetHours) * 60 + OffsetMinutes,
+      Offset1 = if OffsetHours < 0 -> -Offset; true -> Offset end,
+      tomerl_datetime:with_offset(
+        local_datetime(string:substr(String, 1, StrLen - 6)),
+        Offset1
+      )
   end.
 
 local_datetime(String) ->
   [Date, Time] = string:tokens(String, "T "),
-  {local_date(Date), local_time(Time)}.
+  tomerl_datetime:new_datetime(local_date(Date), local_time(Time)).
 
 local_date(String) ->
   [Y, M, D] = string:tokens(String, "-"),
-  {list_to_integer(Y), list_to_integer(M), list_to_integer(D)}.
+  tomerl_datetime:new_date(
+    list_to_integer(Y),
+    list_to_integer(M),
+    list_to_integer(D)
+  ).
 
 local_time(String) ->
   [HH, MM, SS] = string:tokens(String, ":"),
   case string:tokens(SS, ".") of
     [_] ->
-      {list_to_integer(HH), list_to_integer(MM), list_to_integer(SS)};
-    [S, _Frac] ->
-      % TODO: encode `Frac'
-      {list_to_integer(HH), list_to_integer(MM), list_to_integer(S)}
+      tomerl_datetime:new_time(
+        list_to_integer(HH),
+        list_to_integer(MM),
+        list_to_integer(SS)
+      );
+    [S, Frac] ->
+      tomerl_datetime:new_time(
+        list_to_integer(HH),
+        list_to_integer(MM),
+        list_to_integer(S),
+        list_to_integer(Frac)
+      )
   end.
 
 literal_string(String) ->

@@ -63,34 +63,6 @@ to_json(negative_nan) -> value(float, "-nan");
 to_json(infinity) -> value(float, "inf");
 to_json(negative_infinity) -> value(float, "-inf");
 
-to_json({{Y, M, D}, {H, Mi, S}}) ->
-    value(
-        "datetime-local",
-        "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B",
-        [Y, M, D, H, Mi, S]
-    );
-
-to_json({{{Y, M, D}, {H, Mi, S}}, Tz}) ->
-    value(
-        "datetime",
-        "~4..0B-~2..0B-~2..0BT~2..0B:~2..0B:~2..0B~s",
-        [Y, M, D, H, Mi, S, Tz]
-    );
-
-to_json({Y, M, D}) when Y > 24 ->
-    value(
-        date,
-        "~4..0B-~2..0B-~2..0B",
-        [Y, M, D]
-    );
-
-to_json({H, Mi, S}) ->
-    value(
-        time,
-        "~2..0B:~2..0B:~2..0B",
-        [H, Mi, S]
-    );
-
 to_json(Value) when is_float(Value), abs(Value) >= 1.0e7 orelse abs(Value) =< 1.0e-3 ->
     value(float, "~e", [Value]);
 
@@ -98,7 +70,25 @@ to_json(Value) when is_float(Value) ->
     value(float, float_to_list(Value, [compact, {decimals, 10}]));
 
 to_json(Value) when is_integer(Value) ->
-    value(integer, "~p", [Value]).
+    value(integer, "~p", [Value]);
+
+to_json(Value) ->
+    case tomerl_datetime:type(Value) of
+        undefined ->
+            error({unknown_value_type, Value});
+        Else ->
+            dt_value(Else, Value)
+    end.
+
+
+dt_value(Kind, Value) ->
+    Kind1 = case Kind of
+        datetime_offset -> datetime;
+        datetime -> "datetime-local";
+        _ -> Kind
+    end,
+    value(Kind1, tomerl_datetime:format(Value)).
+
 
 value(Type, Value) when is_list(Type) ->
     value(list_to_binary(Type), Value);
