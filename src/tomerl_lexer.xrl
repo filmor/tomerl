@@ -1,6 +1,3 @@
-% @private
-% Pity the "private" marker doesn't work at all.
-
 Definitions.
 
 SP = [\s\t]

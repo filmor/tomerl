@@ -1,3 +1,4 @@
+%% @private
 -module(tomerl_test).
 
 -export([

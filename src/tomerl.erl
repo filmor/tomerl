@@ -6,17 +6,9 @@
 
 -module(tomerl).
 
-%% parser wrappers
 -export([read_file/1, parse/1]).
-
 -export([get/2]).
-
-%% explaining errors
 -export([format_error/1]).
-
-
-%%%---------------------------------------------------------------------------
-%%% data types
 
 -export_type([
   section/0,
@@ -24,12 +16,8 @@
   value/0
 ]).
 
-%%----------------------------------------------------------
-%% main types {{{
-
--type section() :: #{
-  binary() => value()
-}.
+-type section() :: #{ binary() => value() }.
+%% A TOML table
 
 -type value() ::
   maybe_number()
@@ -37,6 +25,7 @@
 | boolean()
 | [value()]
 | section().
+%% Valid TOML values
 
 -type maybe_number() ::
   number()
@@ -44,9 +33,7 @@
 | negative_nan
 | infinity
 | negative_infinity.
-
-
-%% }}}
+%% Number type extended by nan and infinity values
 
 %%----------------------------------------------------------
 %% errors {{{
@@ -109,13 +96,14 @@
 %%----------------------------------------------------------
 
 -export([main/1]).
+%% @private
 main(Args) -> tomerl_test:main(Args).
 
 %%%---------------------------------------------------------------------------
 %%% parser wrappers
 %%%---------------------------------------------------------------------------
 
-%% @doc Parse a TOML file on disk.
+%% @doc Parse a TOML file on disk
 -spec read_file(file:name_all()) ->
   {ok, section()} | {error, ReadError | toml_error()}
   when ReadError :: file:posix() | badarg | terminated | system_limit.
@@ -126,7 +114,7 @@ read_file(File) ->
     {error, Reason} -> {error, Reason}
   end.
 
-%% @doc Parse a TOML config from a string.
+%% @doc Parse a TOML config from a string
 -spec parse(string() | binary() | iolist()) ->
   {ok, section()} | {error, toml_error()}.
 
@@ -148,9 +136,7 @@ parse(String) ->
       {error, Reason}
   end.
 
-%% }}}
-%%----------------------------------------------------------
-
+%% @doc Utility function to access a value or sub-table by path
 -spec get(section(), [string() | binary() | atom()]) ->
     {ok, value()} | {error, not_found}.
 get(Section, [H | T]) ->
@@ -164,12 +150,7 @@ get(Section, [H | T]) ->
 get(Value, []) ->
   {ok, Value}.
 
-%%%---------------------------------------------------------------------------
-%%% explaining errors
-%%%---------------------------------------------------------------------------
-
-%% @doc Prepare a human-readable error message out of an error.
-
+%% @doc Prepare a human-readable error message out of an error
 -spec format_error(Reason :: term()) ->
   string().
 

@@ -24,8 +24,9 @@
 -type minute() :: 0 .. 59.
 -type second() :: 0 .. 60.
 -type millisecond() :: 0 .. 999.
-% Minutes
+
 -type offset() :: z | integer().
+% Timezone offset in minutes or `z'
 
 -record(date, {
     year :: year(),
@@ -119,6 +120,9 @@ type(_) ->
     undefined.
 
 
+%% @doc Convert a tomerl date, time, or datetime object to the format used by
+%%      Erlang's calendar module, dropping the timezone offset and millisecond
+%%      information
 -spec to_calendar(time()) -> calendar:time();
                  (date()) -> calendar:date();
                  (datetime()) -> calendar:datetime();
@@ -135,13 +139,16 @@ to_calendar(#datetime_offset{date=Date, time=Time}) ->
     {to_calendar(Date), to_calendar(Time)}.
 
 
--spec offset(datetime_offset()) -> offset().
+%% @doc Get the timezone offset of a datetime
+-spec offset(datetime_offset()) -> offset();
+            (datetime()) -> undefined.
 offset(#datetime_offset{offset=Offset}) ->
     Offset;
-offset(_) ->
+offset(#datetime{}) ->
     undefined.
 
 
+%% @doc Get the millisecond information of an object
 -spec millisecond(datetime() | datetime_offset() | time()) -> millisecond().
 millisecond(#datetime{time=Time}) ->
     millisecond(Time);
@@ -153,7 +160,8 @@ millisecond(#time_ms{millisecond=Ms}) ->
     Ms.
 
 
--spec format(datetime() | datetime_offset() | time() | date()) -> iolist().
+%% @doc Format the date, time, or datetime in ISO8601 format
+-spec format(T :: t()) -> iolist().
 format(#time{hour=H, minute=M, second=S}) ->
     io_lib:format("~2..0B:~2..0B:~2..0B", [H, M, S]);
 

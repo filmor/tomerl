@@ -12,7 +12,13 @@
     result = #{}
 }).
 
+-type ast() :: [
+    {table, non_neg_integer(), key(), tomerl:section()} |
+    {array_table, non_neg_integer(), key(), tomerl:section()}
+].
 
+%% @doc Convert the parse result to a combined single table
+-spec do(ast()) -> {ok, tomerl:section()} | {error, _}.
 do(Ast) ->
     try
         State = lists:foldl(

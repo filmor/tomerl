@@ -12,7 +12,7 @@ specification.
 
 == Usage Example ==
 
-Assuming an input file called `config.toml` with the following content:
+Assuming an input file called `config.toml' with the following content:
 
 ```
 lipsum = "lorem ipsum dolor sit amet"
@@ -26,12 +26,12 @@ has_some = true
 
 the data can be read in Erlang like this:
 
-```erlang
+```
 {ok, Data} = tomerl:read_file("config.toml").
 
 >>> Data = #{
     <<"lipsum">> => <<"lorem ipsum dolor sit amet">>,
     <<"apples">> => #{ <<"count">> => 2 },
-    <<"berry">> => #{ <<"black">> => #{ has_some => true }}
+    <<"berry">> => #{ <<"black">> => #{ <<"has_some">> => true }}
 }.
 '''

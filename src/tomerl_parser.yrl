@@ -1,9 +1,3 @@
-%%%---------------------------------------------------------------------------
-
-Header
-  "%%% @private"
-.
-
 Nonterminals
   toml
   root_section section_list
