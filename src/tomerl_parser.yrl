@@ -152,6 +152,9 @@ to_map({key_value, [H|T], Value}, Map) ->
   Map#{ H => to_map({key_value, T, Value}, maps:get(H, Map, #{})) }.
 
 
+to_binary(Atom) when is_atom(Atom) ->
+  atom_to_binary(Atom);
+
 to_binary(List) ->
   case unicode:characters_to_binary(List) of
     {error, _Parsed, _RestData} ->
