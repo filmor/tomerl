@@ -85,8 +85,13 @@ do_set(array, Current, [], List, Value, ArrayTables) when is_list(List) ->
             error({fixed_array, lists:reverse(Current)})
     end;
 
-do_set(table, _Current, [], Map, Value, _ArrayTables) when is_map(Map) ->
-    recursive_merge(Map, Value);
+do_set(table, Current, [], Map, Value, ArrayTables) when is_map(Map) ->
+    case ordsets:is_element(Current, ArrayTables) of
+        true ->
+            error({already_array_table, lists:reverse(Current)});
+        false ->
+            recursive_merge(Map, Value)
+    end;
 
 do_set(Type, Current, Key, [HList|TList], Value, ArrayTables) ->
     case ordsets:is_element(Current, ArrayTables) of
