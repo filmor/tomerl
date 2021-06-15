@@ -24,10 +24,10 @@ valid_test_() ->
                 {ok, TomlData} = tomerl:read_file(Toml),
                 ConvertedToml = tomerl_test:to_json(TomlData),
                 ?assertEqual(JsonData, ConvertedToml)
-            end 
+            end
         }
         ||
-        {Name, Toml, Json} <- discover("test/test_suite/valid")
+        {Name, Toml, Json} <- discover("test/toml-test/tests/valid")
     ].
 
 invalid_test_() ->
@@ -39,5 +39,5 @@ invalid_test_() ->
             end
         }
         ||
-        {Name, Toml, _} <- discover("test/test_suite/invalid")
+        {Name, Toml, _} <- discover("test/toml-test/tests/invalid")
     ].
