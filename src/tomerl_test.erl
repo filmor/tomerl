@@ -3,7 +3,8 @@
 
 -export([
     main/1,
-    to_json/1
+    to_json/1,
+    reformat_json/1
 ]).
 
 main(Args) ->
@@ -16,7 +17,7 @@ main(Args) ->
             {ok, Res} = tomerl:parse(Input),
             Json = to_json(Res),
 
-            io:format("~s~n", [jsx:encode(Json)]);
+            io:format("~s~n", [jsone:encode(Json)]);
         ["convert"] ->
             {ok, Res} = tomerl:parse(Input),
             io:format("~p~n", [Res]);
@@ -37,7 +38,34 @@ read_all(Acc) ->
     end.
 
 
--spec to_json(tomerl:section()) -> jsx:term().
+reformat_json(JsonData) when is_list(JsonData) ->
+    [reformat_json(E) || E <- JsonData];
+reformat_json(JsonData) when is_map(JsonData) ->
+    case maps:find(<<"type">>, JsonData) of
+        {ok, <<"float">>} ->
+            % Parse float and reformat
+            case maps:get(<<"value">>, JsonData) of
+                <<"+inf">> ->
+                    value(float, "inf");
+                E when E =:= <<"nan">>; E =:= <<"inf">>; E =:= <<"-inf">> ->
+                    % unchanged
+                    JsonData;
+                Val ->
+                    to_json(binary_to_float(Val))
+            end;
+        {ok, _T} ->
+            JsonData;
+        _ ->
+            maps:map(
+                fun (_K, V) -> reformat_json(V) end,
+                JsonData
+            )
+    end;
+reformat_json(JsonData) ->
+    JsonData.
+
+
+-spec to_json(tomerl:section()) -> map().
 to_json(Map) when is_map(Map) ->
     maps:fold(
         fun (K, V, Res) ->

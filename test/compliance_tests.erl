@@ -20,10 +20,11 @@ valid_test_() ->
             Name,
             fun () ->
                 {ok, JsonFile} = file:read_file(Json),
-                JsonData = jsx:decode(JsonFile, [return_maps]),
+                JsonData = jsone:decode(JsonFile),
+                JsonData1 = tomerl_test:reformat_json(JsonData),
                 {ok, TomlData} = tomerl:read_file(Toml),
                 ConvertedToml = tomerl_test:to_json(TomlData),
-                ?assertEqual(JsonData, ConvertedToml)
+                ?assertEqual(JsonData1, ConvertedToml)
             end
         }
         ||

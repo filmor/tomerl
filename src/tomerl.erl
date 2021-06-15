@@ -131,8 +131,9 @@ parse(String) ->
         {error, {tokenize, LineNumber}}
     end
   catch
-    error:Reason ->
-      {error, Reason}
+    error:Reason:_St ->
+      % {error, Reason, _St}
+      {error, Reason}      
   end.
 
 %% @doc Utility function to access a value or sub-table by path
