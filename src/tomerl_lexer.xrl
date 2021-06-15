@@ -21,9 +21,9 @@ LITERAL_STRING_ML = '''('?'?[^'\x00-\x09\x0b-\x1f\x7f])*'''
 POS_INTEGER = ([0-9]|[1-9](_?[0-9])+)
 INTEGER = [+-]?{POS_INTEGER}
 KEY_INTEGER = -?{POS_INTEGER}
-HEX_INTEGER = 0x[0-9a-fA-F_]+
-OCT_INTEGER = 0o[0-7_]+
-BIN_INTEGER = 0b[01_]+
+HEX_INTEGER = 0x[0-9a-fA-F](_?[0-9a-fA-F])*
+OCT_INTEGER = 0o[0-7](_?[0-7])*
+BIN_INTEGER = 0b[01](_?[01])*
 
 FRACTION = \.[0-9](_?[0-9])*
 EXPONENT = [eE]{INTEGER}
