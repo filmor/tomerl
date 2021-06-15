@@ -17,7 +17,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Check format
+      run: rebar3 fmt --check
     - name: Compile
       run: rebar3 compile
+    - name: Check cross references
+      run: rebar3 xref
     - name: Run tests
       run: rebar3 eunit
+    - name: Check types
+      run: rebar3 dialyzer

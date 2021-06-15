@@ -8,13 +8,13 @@
 
 -record(state, {
     array_tables = [] :: [key()],
-    tables = #{} :: #{ key() => pos_integer() },
+    tables = #{} :: #{key() => pos_integer()},
     result = #{}
 }).
 
 -type ast() :: [
-    {table, non_neg_integer(), key(), tomerl:section()} |
-    {array_table, non_neg_integer(), key(), tomerl:section()}
+    {table, non_neg_integer(), key(), tomerl:section()}
+    | {array_table, non_neg_integer(), key(), tomerl:section()}
 ].
 
 %% @doc Convert the parse result to a combined single table
@@ -33,7 +33,6 @@ do(Ast) ->
             {error, {semantic, Reason}}
     end.
 
-
 do({table, Line, Key, Table}, State) ->
     % 1. Ensure that a map exists at *Key (watch out for arrays on the way!)
     %    Arrays should be easy enough to traverse: The respective key must be in
@@ -41,18 +40,17 @@ do({table, Line, Key, Table}, State) ->
     %    and revert at the end?)
     % 2. Set current_table
     Tables = State#state.tables,
-    
+
     % Check if redefined
     State1 =
-    case maps:find(Key, Tables) of
-        {ok, OtherLine} ->
-            error({redefining_table, OtherLine, Line});
-        _ ->
-            State#state{tables=Tables#{ Key => Line }}
-    end,
+        case maps:find(Key, Tables) of
+            {ok, OtherLine} ->
+                error({redefining_table, OtherLine, Line});
+            _ ->
+                State#state{tables = Tables#{Key => Line}}
+        end,
 
     do_set(table, Key, Table, State1);
-
 do({array_table, _Line, Key, Table}, State) ->
     % 1. Ensure that *Key maps to an array
     % 2. Append a new empty object to the array
@@ -65,15 +63,18 @@ do({array_table, _Line, Key, Table}, State) ->
     T = maps:without(KeysToDrop, State#state.tables),
 
     State1 = do_set(array, Key, Table, State),
-    State1#state{array_tables=AT, tables=T};
-
+    State1#state{array_tables = AT, tables = T};
 do(Entry, State) ->
     error({Entry, State}).
 
-
 do_set(Type, Key, Value, State) ->
     New = do_set(
-        Type, [], Key, State#state.result, Value, State#state.array_tables
+        Type,
+        [],
+        Key,
+        State#state.result,
+        Value,
+        State#state.array_tables
     ),
     State#state{result = New}.
 
@@ -84,7 +85,6 @@ do_set(array, Current, [], List, Value, ArrayTables) when is_list(List) ->
         false ->
             error({fixed_array, lists:reverse(Current)})
     end;
-
 do_set(table, Current, [], Map, Value, ArrayTables) when is_map(Map) ->
     case ordsets:is_element(Current, ArrayTables) of
         true ->
@@ -92,41 +92,42 @@ do_set(table, Current, [], Map, Value, ArrayTables) when is_map(Map) ->
         false ->
             recursive_merge(Map, Value)
     end;
-
-do_set(Type, Current, Key, [HList|TList], Value, ArrayTables) ->
+do_set(Type, Current, Key, [HList | TList], Value, ArrayTables) ->
     case ordsets:is_element(Current, ArrayTables) of
         true ->
             [do_set(Type, Current, Key, HList, Value, ArrayTables) | TList];
         false ->
             error({fixed_array, Key})
     end;
-
-do_set(Type, Current, [H|Tail], Map, Value, ArrayTables) when is_map(Map) ->
+do_set(Type, Current, [H | Tail], Map, Value, ArrayTables) when is_map(Map) ->
     case maps:find(H, Map) of
         {ok, Next} ->
-            Map#{ H => do_set(Type, [H|Current], Tail, Next, Value, ArrayTables)};
+            Map#{H => do_set(Type, [H | Current], Tail, Next, Value, ArrayTables)};
         _ ->
-            Value1 = case Type of array -> [Value]; table -> Value end,
-            Map#{ H => new(Tail, Value1)}
+            Value1 =
+                case Type of
+                    array -> [Value];
+                    table -> Value
+                end,
+            Map#{H => new(Tail, Value1)}
     end.
-
 
 new(L, Value) ->
     lists:foldr(
-        fun (Comp, Res) ->
+        fun(Comp, Res) ->
             #{Comp => Res}
         end,
         Value,
         L
     ).
 
-
 recursive_merge(Map1, Map2) ->
     maps:fold(
-        fun (K, V, Res) ->
+        fun(K, V, Res) ->
             maps:update_with(
                 K,
-                fun (OldV) when is_map(OldV), is_map(V) ->
+                fun
+                    (OldV) when is_map(OldV), is_map(V) ->
                         recursive_merge(OldV, V);
                     (OldV) ->
                         error({overwriting, OldV, V})
@@ -139,10 +140,9 @@ recursive_merge(Map1, Map2) ->
         Map2
     ).
 
-
 reverse_lists(Map) when is_map(Map) ->
-    maps:map(fun (_K, V) -> reverse_lists(V) end, Map);
+    maps:map(fun(_K, V) -> reverse_lists(V) end, Map);
 reverse_lists(List) when is_list(List) ->
-    lists:foldl(fun (V, Acc) -> [reverse_lists(V) | Acc] end, [], List);
+    lists:foldl(fun(V, Acc) -> [reverse_lists(V) | Acc] end, [], List);
 reverse_lists(V) ->
     V.

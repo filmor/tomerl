@@ -110,6 +110,15 @@ inf   : {token, {maybe_key, TokenLine, {float, TokenChars, infinity}}}.
 
 Erlang code.
 
+-ignore_xref([
+    format_error/1,
+    string/1,
+    string/2,
+    token/2,
+    token/3,
+    tokens/2,
+    tokens/3
+]).
 -export([tokenize/1]).
 
 %% @doc Lexer entry point.

@@ -115,6 +115,11 @@ inline_kv_list -> inline_kv_list ',' key_value : to_map('$3', '$1').
 
 Erlang code.
 
+-ignore_xref([
+    format_error/1,
+    parse_and_scan/1
+]).
+
 value({maybe_key, Line, {_Type, _RawValue, ParsedValue}}) ->
   {ParsedValue, Line};
 
