@@ -86,6 +86,8 @@ dt_value(Kind, Value) ->
     Kind1 = case Kind of
         datetime_offset -> datetime;
         datetime -> "datetime-local";
+        time -> "time-local";
+        date -> "date-local";
         _ -> Kind
     end,
     value(Kind1, tomerl_datetime:format(Value)).
