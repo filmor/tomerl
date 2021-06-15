@@ -30,7 +30,6 @@
 -type maybe_number() ::
   number()
 | nan
-| negative_nan
 | infinity
 | negative_infinity.
 %% Number type extended by nan and infinity values

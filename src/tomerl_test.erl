@@ -60,7 +60,6 @@ to_json(Value) when is_boolean(Value) ->
     value(bool, atom_to_list(Value));
 
 to_json(nan) -> value(float, "nan");
-to_json(negative_nan) -> value(float, "-nan");
 to_json(infinity) -> value(float, "inf");
 to_json(negative_infinity) -> value(float, "-inf");
 

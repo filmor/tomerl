@@ -85,7 +85,7 @@ inf   : {token, {maybe_key, TokenLine, {float, TokenChars, infinity}}}.
 
 
 {NAN} : {token, {float, TokenLine, nan}}.
-{NEG_NAN} : {token, {float, TokenLine, negative_nan}}.
+{NEG_NAN} : {token, {float, TokenLine, nan}}.
 {INF} : {token, {float, TokenLine, infinity}}.
 {NEG_INF} : {token, {float, TokenLine, negative_infinity}}.
 {BARE_KEY} : {token, {bare_key, TokenLine, TokenChars}}.
