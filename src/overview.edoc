@@ -1,14 +1,13 @@
 @author Benedikt Reinartz <filmor@gmail.com>
 @author Stanislaw Klekot <dozzie@jarowit.net>
 @title TOML parser
-@version 0.4.0
+@version 0.5.0
 @see tomerl
 @doc
 
 `tomerl' is an Erlang library application for parsing
 <a href="https://github.com/toml-lang/toml" target="_parent">TOML</a>
-data. It supports parsing version 1.0.0-rc1 of the TOML
-specification.
+data. It supports parsing version 1.0.0 of the TOML specification.
 
 == Usage Example ==
 
