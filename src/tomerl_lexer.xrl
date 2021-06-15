@@ -15,8 +15,12 @@ BARE_KEY = [a-zA-Z0-9_-]+
 LITERAL_STRING = '[^\'\x00-\x1f\x7f]*'
 BASIC_STRING = "({CHAR}|{ESC_CHAR}|{U4}|{U8})*"
 BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""
+BASIC_STRING_ML_1 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?""""
+BASIC_STRING_ML_2 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""""
 % 0x00 - 0x1f and 0x7f are always forbidden, but here we need to allow \n i.e. \x0a
 LITERAL_STRING_ML = '''('?'?[^'\x00-\x09\x0b-\x1f\x7f])*'''
+LITERAL_STRING_ML_1 = '''(('?'?[^'\x00-\x09\x0b-\x1f\x7f])*')'''
+LITERAL_STRING_ML_2 = '''(('?'?[^'\x00-\x09\x0b-\x1f\x7f])*'')'''
 
 POS_INTEGER = ([0-9]|[1-9](_?[0-9])+)
 INTEGER = [+-]?{POS_INTEGER}
@@ -93,7 +97,11 @@ inf   : {token, {maybe_key, TokenLine, {float, TokenChars, infinity}}}.
 {BASIC_STRING}   : {token, {basic_string, TokenLine, basic_string(TokenChars)}}.
 {LITERAL_STRING} : {token, {literal_string, TokenLine, literal_string(TokenChars)}}.
 {BASIC_STRING_ML}   : {token, {basic_string_ml, TokenLine, basic_string_ml(TokenChars)}}.
+{BASIC_STRING_ML_1}   : {token, {basic_string_ml, TokenLine, basic_string_ml(TokenChars)}}.
+{BASIC_STRING_ML_2}   : {token, {basic_string_ml, TokenLine, basic_string_ml(TokenChars)}}.
 {LITERAL_STRING_ML} : {token, {literal_string_ml, TokenLine, literal_string_ml(TokenChars)}}.
+{LITERAL_STRING_ML_1} : {token, {literal_string_ml, TokenLine, literal_string_ml(TokenChars)}}.
+{LITERAL_STRING_ML_2} : {token, {literal_string_ml, TokenLine, literal_string_ml(TokenChars)}}.
 
 {SP}+     : skip_token.
 {COMMENT} : skip_token.
