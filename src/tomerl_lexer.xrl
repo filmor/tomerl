@@ -30,7 +30,7 @@ OCT_INTEGER = 0o[0-7](_?[0-7])*
 BIN_INTEGER = 0b[01](_?[01])*
 
 FRACTION = \.[0-9](_?[0-9])*
-EXPONENT = [eE]{INTEGER}
+EXPONENT = [eE](0_?)*{INTEGER}
 FLOAT = {INTEGER}({FRACTION}|{FRACTION}{EXPONENT}|{EXPONENT})
 KEY_FLOAT = -?{POS_INTEGER}[eE]-?{POS_INTEGER}
 NAN = \+nan
@@ -157,6 +157,7 @@ to_float(String) ->
       % NOTE: we're here because either "." or "[eE]" was found in the number,
       % and we know the "." is missing
       [A, B] = string:tokens(StripUnderscore, "eE"),
+
       list_to_float(A ++ ".0e" ++ B);
     _ ->
       list_to_float(StripUnderscore)
