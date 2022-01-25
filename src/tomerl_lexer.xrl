@@ -46,8 +46,8 @@ MIN  = ([0-5][0-9])
 SEC  = ([0-5][0-9]|60)
 DATE = {YEAR}-{MONTH}-{DAY}
 TIME = {HOUR}:{MIN}:{SEC}(\.[0-9]+)?
-TZOFFSET = (Z|[+-]{HOUR}:{MIN})
-DTSEP = [T\s]
+TZOFFSET = ([zZ]|[+-]{HOUR}:{MIN})
+DTSEP = [tT\s]
 
 %%%---------------------------------------------------------------------------
 
@@ -166,7 +166,7 @@ to_float(String) ->
 datetime_tz(String) ->
   StrLen = length(String),
   case lists:last(String) of
-    $Z ->
+    T when T =:= $Z; T =:= $z ->
       tomerl_datetime:with_offset(
         local_datetime(string:substr(String, 1, StrLen - 1)),
         z
@@ -185,7 +185,7 @@ datetime_tz(String) ->
   end.
 
 local_datetime(String) ->
-  [Date, Time] = string:tokens(String, "T "),
+  [Date, Time] = string:tokens(String, "tT "),
   tomerl_datetime:new_datetime(local_date(Date), local_time(Time)).
 
 local_date(String) ->
