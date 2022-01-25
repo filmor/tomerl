@@ -41,6 +41,18 @@ invalid_test_() ->
             end
         }
      || {Name, Toml, _} <- discover("test/toml-test/tests/invalid"),
-        % Skip mixed array type rejection, not implemented here
-        string:prefix(Name, <<"array-mixed-types-">>) =:= nomatch
+        not skip_invalid(Name)
     ].
+
+skip_invalid(RootName) ->
+    case lists:flatten(string:replace(RootName, "\\", "/")) of
+        % Discussion: https://github.com/toml-lang/toml/issues/846
+        % We might implement rejecting these, but apart from sticking to
+        % the spec I don't really see the point.
+        "inline-table/add" -> true;
+        "table/append-with-dotted-keys-1" -> true;
+        "table/append-with-dotted-keys-2" -> true;
+        "table/duplicate-key-dotted-table" -> true;
+        "table/duplicate-key-dotted-table2" -> true;
+        _ -> false
+    end.
