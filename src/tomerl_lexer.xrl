@@ -1,7 +1,7 @@
 Definitions.
 
 SP = [\s\t]
-COMMENT = #[^\n]*
+COMMENT = #[^\x00-\x1f\x7f]*
 
 HEX = [0-9a-fA-F]
 HEX4 = {HEX}{HEX}{HEX}{HEX}
