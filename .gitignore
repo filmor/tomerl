@@ -1,5 +1,2 @@
-/doc/edoc-info
-/doc/*.png
-/doc/*.html
-/doc/*.css
+/doc/
 /_build/
