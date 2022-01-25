@@ -203,7 +203,6 @@ format(#time{hour = H, minute = M, second = S}) ->
     io_lib:format("~2..0B:~2..0B:~2..0B", [H, M, S]);
 format(#time_frac{hour = H, minute = M, second = S, fractional = Frac, exponent = Exp}) ->
     Format = ("~2..0B:~2..0B:~2..0B.~" ++ integer_to_list(Exp) ++ "..0B"),
-    io:write(Format ++ "~n"),
     io_lib:format(Format, [H, M, S, Frac]);
 format(#date{year = Y, month = M, day = D}) ->
     io_lib:format("~4..0B-~2..0B-~2..0B", [Y, M, D]);
