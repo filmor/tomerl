@@ -55,14 +55,14 @@ key_value -> key '=' value : {key_value, '$1', '$3'}.
 
 %%----------------------------------------------------------
 
-key -> key_component         : ['$1'].
-key -> key_component '.' key : ['$1' | '$3'].
+key -> key_component         : '$1'.
+key -> key_component '.' key : '$1' ++ '$3'.
 
-key_component -> bare_key       : key_string_value('$1').
-key_component -> basic_string   : key_string_value('$1').
-key_component -> literal_string : key_string_value('$1').
-key_component -> maybe_key      : key_string_value('$1').
-key_component -> bool           : key_string_value('$1').
+key_component -> bare_key       : key_string_values('$1').
+key_component -> basic_string   : key_string_values('$1').
+key_component -> literal_string : key_string_values('$1').
+key_component -> maybe_key      : key_string_values('$1').
+key_component -> bool           : key_string_values('$1').
 
 %%----------------------------------------------------------
 
@@ -139,10 +139,14 @@ string_value({maybe_key, Line, {_Type, RawValue, _}}) ->
 string_value({_, Line, Val}) ->
   {to_binary(Val), Line}.
 
--spec key_string_value(_) -> binary().
-key_string_value(Token) ->
+-spec key_string_values(_) -> [binary()].
+key_string_values({maybe_key, _, _} = Token) ->
+  % Special handling for maybe_keys as they can contain dots
   {Str, _} = string_value(Token),
-  Str.
+  string:lexemes(Str, ".");
+key_string_values(Token) ->
+  {Str, _} = string_value(Token),
+  [Str].
 
 -spec to_map({key_value, [binary()], {_, _}}, #{ binary() => _ }) -> #{ binary() => _ }.
 to_map({key_value, [H], {Value, _Line}}, Map) ->
