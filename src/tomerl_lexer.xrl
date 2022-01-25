@@ -6,7 +6,8 @@ COMMENT = #[^\n]*
 HEX = [0-9a-fA-F]
 HEX4 = {HEX}{HEX}{HEX}{HEX}
 HEX8 = {HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}
-CHAR = [^\\"\x00-\x1f\x7f]
+% All control characters but the literal tab are forbidden
+CHAR = [^\\"\x00-\x1f\x7f]|\x09
 ESC_CHAR = \\[btnfr"\\\\]
 U4 = \\u{HEX4}
 U8 = \\U{HEX8}
@@ -17,10 +18,10 @@ BASIC_STRING = "({CHAR}|{ESC_CHAR}|{U4}|{U8})*"
 BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""
 BASIC_STRING_ML_1 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?""""
 BASIC_STRING_ML_2 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""""
-% 0x00 - 0x1f and 0x7f are always forbidden, but here we need to allow \n i.e. \x0a
-LITERAL_STRING_ML = '''('?'?[^'\x00-\x09\x0b-\x1f\x7f])*'''
-LITERAL_STRING_ML_1 = '''(('?'?[^'\x00-\x09\x0b-\x1f\x7f])*')'''
-LITERAL_STRING_ML_2 = '''(('?'?[^'\x00-\x09\x0b-\x1f\x7f])*'')'''
+% 0x00 - 0x1f and 0x7f are always forbidden, but here we need to allow \n=\x0a and \t=\x09
+LITERAL_STRING_ML = '''('?'?[^'\x00-\x08\x0b-\x1f\x7f])*'''
+LITERAL_STRING_ML_1 = '''(('?'?[^'\x00-\x08\x0b-\x1f\x7f])*')'''
+LITERAL_STRING_ML_2 = '''(('?'?[^'\x00-\x08\x0b-\x1f\x7f])*'')'''
 
 POS_INTEGER = ([0-9]|[1-9](_?[0-9])+)
 INTEGER = [+-]?{POS_INTEGER}
