@@ -3,6 +3,8 @@
 -ignore_xref([
     format/1,
     millisecond/1,
+    fractional/1,
+    new_time/4,
     offset/1,
     to_calendar/1,
     type/1
@@ -10,6 +12,7 @@
 -export([
     new_time/3,
     new_time/4,
+    new_time/5,
     new_date/3,
     new_datetime/2,
 
@@ -17,6 +20,7 @@
 
     to_calendar/1,
     millisecond/1,
+    fractional/1,
     offset/1,
 
     type/1,
@@ -46,11 +50,12 @@
     second :: second()
 }).
 
--record(time_ms, {
+-record(time_frac, {
     hour :: hour(),
     minute :: minute(),
     second :: second(),
-    millisecond :: millisecond()
+    fractional :: non_neg_integer(),
+    exponent :: pos_integer()
 }).
 
 -record(datetime, {
@@ -65,7 +70,7 @@
 }).
 
 -opaque date() :: #date{}.
--opaque time() :: #time{} | #time_ms{}.
+-opaque time() :: #time{} | #time_frac{}.
 -opaque datetime() :: #datetime{}.
 -opaque datetime_offset() :: #datetime_offset{}.
 -type t() :: date() | time() | datetime() | datetime_offset().
@@ -92,7 +97,17 @@ new_time(H, M, S) ->
 
 -spec new_time(hour(), minute(), second(), millisecond()) -> time().
 new_time(H, M, S, Ms) ->
-    #time_ms{hour = H, minute = M, second = S, millisecond = Ms}.
+    new_time(H, M, S, Ms, 3).
+
+-spec new_time(hour(), minute(), second(), non_neg_integer(), pos_integer()) -> time().
+new_time(H, M, S, Frac, FracExp) ->
+    #time_frac{
+        hour = H,
+        minute = M,
+        second = S,
+        fractional = Frac,
+        exponent = FracExp
+    }.
 
 -spec new_date(year(), month(), day()) -> date().
 new_date(Y, M, D) ->
@@ -113,7 +128,7 @@ with_offset(#datetime{date = Date, time = Time}, Offset) ->
 -spec type(_) -> time | date | datetime | datetime_offset | undefined.
 type(#time{}) ->
     time;
-type(#time_ms{}) ->
+type(#time_frac{}) ->
     time;
 type(#date{}) ->
     date;
@@ -134,7 +149,7 @@ type(_) ->
     (datetime_offset()) -> calendar:datetime().
 to_calendar(#time{hour = H, minute = M, second = S}) ->
     {H, M, S};
-to_calendar(#time_ms{hour = H, minute = M, second = S}) ->
+to_calendar(#time_frac{hour = H, minute = M, second = S}) ->
     {H, M, S};
 to_calendar(#date{year = Y, month = M, day = D}) ->
     {Y, M, D};
@@ -160,15 +175,36 @@ millisecond(#datetime_offset{time = Time}) ->
     millisecond(Time);
 millisecond(#time{}) ->
     0;
-millisecond(#time_ms{millisecond = Ms}) ->
-    Ms.
+millisecond(#time_frac{fractional = Frac, exponent = Exp}) ->
+    RefExp = 3,
+    if
+        Exp >= 1, Exp < RefExp ->
+            Frac * int_pow(10, RefExp - Exp);
+        Exp =:= RefExp ->
+            Frac;
+        Exp > RefExp ->
+            Frac div int_pow(10, Exp - RefExp)
+    end.
+
+-spec fractional(datetime() | datetime_offset() | time()) ->
+    {FractionalPart :: non_neg_integer(), Exponent :: pos_integer()}.
+fractional(#datetime{time = Time}) ->
+    fractional(Time);
+fractional(#datetime_offset{time = Time}) ->
+    fractional(Time);
+fractional(#time{}) ->
+    {0, 1};
+fractional(#time_frac{fractional = Frac, exponent = Exp}) ->
+    {Frac, Exp}.
 
 %% @doc Format the date, time, or datetime in ISO8601 format
 -spec format(T :: t()) -> iolist().
 format(#time{hour = H, minute = M, second = S}) ->
     io_lib:format("~2..0B:~2..0B:~2..0B", [H, M, S]);
-format(#time_ms{hour = H, minute = M, second = S, millisecond = Ms}) ->
-    io_lib:format("~2..0B:~2..0B:~2..0B.~3..0B", [H, M, S, Ms]);
+format(#time_frac{hour = H, minute = M, second = S, fractional = Frac, exponent = Exp}) ->
+    Format = ("~2..0B:~2..0B:~2..0B.~" ++ integer_to_list(Exp) ++ "..0B"),
+    io:write(Format ++ "~n"),
+    io_lib:format(Format, [H, M, S, Frac]);
 format(#date{year = Y, month = M, day = D}) ->
     io_lib:format("~4..0B-~2..0B-~2..0B", [Y, M, D]);
 format(#datetime{date = Date, time = Time}) ->
@@ -186,3 +222,15 @@ format(#datetime_offset{date = Date, time = Time, offset = Offset}) ->
     Hours = Offset1 div 60,
     Formatted = io_lib:format("~2..0B:~2..0B", [Hours, Minutes]),
     [format(Date), $T, format(Time), Sign, Formatted].
+
+-spec int_pow(Base :: integer(), Exponent :: non_neg_integer()) -> integer().
+int_pow(B, E) when B =:= 0 andalso E =:= 0; E < 0 ->
+    error(badarg);
+int_pow(_B, 0) ->
+    1;
+int_pow(B, 1) ->
+    B;
+int_pow(B, E) when E rem 2 =:= 0 ->
+    int_pow(B * B, E div 2);
+int_pow(B, E) ->
+    B * int_pow(B, E - 1).

@@ -206,11 +206,13 @@ local_time(String) ->
         list_to_integer(SS)
       );
     [S, Frac] ->
+      FracExp = string:length(Frac),
       tomerl_datetime:new_time(
         list_to_integer(HH),
         list_to_integer(MM),
         list_to_integer(S),
-        list_to_integer(Frac)
+        list_to_integer(Frac),
+        FracExp
       )
   end.
 
