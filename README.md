@@ -4,6 +4,7 @@ TOML Parser for Erlang
 [![CI](https://github.com/filmor/tomerl/workflows/CI/badge.svg)](https://github.com/filmor/tomerl/actions)
 [![Hex](https://img.shields.io/hexpm/v/tomerl)](https://hex.pm/packages/tomerl)
 [![TOML](https://img.shields.io/badge/TOML-1.0.0-blue)](https://toml.io/en/v1.0.0)
+[![License](https://img.shields.io/hexpm/l/tomerl)](./LICENSE.md)
 
 `tomerl` is an Erlang library for parsing
 [TOML 1.0.0](https://toml.io/en/v1.0.0) data, forked from [toml](https://github.com/dozzie/toml)

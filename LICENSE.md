@@ -1,8 +1,9 @@
-                      3-CLAUSE BSD LICENSE
+3-CLAUSE BSD LICENSE
+====================
 
-Copyright (c) 2020-2021, Benedikt Reinartz.
-Copyright (c) 2017, Stanislaw Klekot.
-All rights reserved.
+_Copyright © 2020-2022, Benedikt Reinartz._  
+_Copyright © 2017, Stanisław Klekot._  
+_All rights reserved._  
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+### Added
+- Support for sub-millisecond precision in datetimes
+- Use [`rebar3_ex_doc`](https://github.com/starbelly/rebar3_ex_doc) for documentation
+  generation
+
+### Changed
+- Updated compliance test suite and respective eunit generator
+- Allow leading zeros in float exponents
+- Allow lower-case date/time separator and Z
+- Handle "float-like" keys (numeric keys with a single dot)
+- Fix handling of control characters (allow literal tab character, disallow control
+  characters in comments)
+- Fix trailing space parsing for multiline strings
 
 ## [0.5.0] - 2021-06-15
 ### Changed
