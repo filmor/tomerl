@@ -7,17 +7,17 @@ HEX = [0-9a-fA-F]
 HEX4 = {HEX}{HEX}{HEX}{HEX}
 HEX8 = {HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}
 % All control characters but the literal tab are forbidden
-CHAR = [^\\"\x00-\x1f\x7f]|\x09
-ESC_CHAR = \\[btnfr"\\\\]
+CHAR = [^\\"\x00-\x1f\x7f]|\t
+ESC_CHAR = \\[btnfr"\\]
 U4 = \\u{HEX4}
 U8 = \\U{HEX8}
 
 BARE_KEY = [a-zA-Z0-9_-]+
 LITERAL_STRING = '[^\'\x00-\x1f\x7f]*'
 BASIC_STRING = "({CHAR}|{ESC_CHAR}|{U4}|{U8})*"
-BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""
-BASIC_STRING_ML_1 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?""""
-BASIC_STRING_ML_2 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*(\\{SP}+)?"""""
+BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*"""
+BASIC_STRING_ML_1 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*""""
+BASIC_STRING_ML_2 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*"""""
 % 0x00 - 0x1f and 0x7f are always forbidden, but here we need to allow \n=\x0a and \t=\x09
 LITERAL_STRING_ML = '''('?'?[^'\x00-\x08\x0b-\x1f\x7f])*'''
 LITERAL_STRING_ML_1 = '''(('?'?[^'\x00-\x08\x0b-\x1f\x7f])*')'''
