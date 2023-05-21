@@ -10,8 +10,8 @@ on stdin until EOF, and is expected to write the corresponding JSON encoding on
 stdout. Please see 'README.md' for details on how to satisfy the interface
 expected by 'toml-test' with your own parser.
 
-Any positional arguments are use as the parser-cmd; to pass flags, remember to
-stop toml-test's flag parsing with --
+Any positional arguments are use as the parser-cmd; to pass flags stop
+toml-test's flag parsing with --:
 
    $ %[1]s -- my-parser -x -y
 
@@ -20,71 +20,80 @@ There are two tests:
     decoder    This is the default.
     encoder    When -encoder is given.
 
-Tests are split in to two groups:
+Tests are split in to "valid" and "invalid" groups:
 
    valid           Valid TOML files
    invalid         Invalid TOML files that should be rejected with an error.
-   invalid-encoder Invalid input for the encoder
 
 All tests are referred to relative to to the tests/ directory: valid/dir/name or
 invalid/dir/name.
 
 Flags:
 
-    -help      Show this help and exit.
+    -h, -help     Show this help and exit.
 
-    -version   Show version and exit.
+    -V, -version  Show version and exit. Add twice to show detailed build info.
 
-    -encoder   The given parser-cmd will be tested as a TOML encoder.
+    -encoder      The given parser-cmd will be tested as a TOML encoder rather
+                  than a decoder.
 
-               The parser-cmd will be sent JSON on stdin and is expected to
-               write TOML to stdout. The JSON will be in the same format as
-               specified in the toml-test README. Note that this depends on the
-               correctness of my TOML parser!
+                  The parser-cmd will be sent JSON on stdin and is expected to
+                  write TOML to stdout. The JSON will be in the same format as
+                  specified in the toml-test README. Note that this depends on
+                  the correctness of my TOML parser!
 
-    -v         List all tests, even passing ones. Add twice to show detailed
-               output for passing tests.
+    -toml         Select TOML version to run tests for. Supported versions are
+                  "1.0.0" and "1.1.0" (which isn't released yet and may change).
+                  Defaults to 1.0.0.
 
-    -run       Specify a list of tests to run; the default is to run all tests.
+    -list-files   List all test files, one file per line, and exit without
+                  running anything. This takes the -toml flag in to account, but
+                  none of the other flags.
 
-               Test names include the directory, i.e. "valid/test-name" or
-               "invalid/test-name". You can use globbing patterns , for example
-               to run all string tests:
+    -v            List all tests, even passing ones. Add twice to show detailed
+                  output for passing tests.
 
-                   $ toml-test toml-test-decoder -run 'valid/string*'
+    -run          Specify list of tests to run; the default is to run all tests.
 
-               You can specify this argument more than once, and/or specify
-               multiple tests by separating them with a comma:
+                  Test names include the directory, i.e. "valid/test-name" or
+                  "invalid/test-name". You can use globbing patterns , for
+                  example to run all string tests:
 
-                   $ toml-test toml-test-decoder \
-                       -run valid/string-empty \
-                       -run valid/string-nl,valid/string-simple
+                      $ toml-test toml-test-decoder -run 'valid/string*'
 
-               This will run three tests (string-empty, string-nl,
-               string-simple).
+                  You can specify this argument more than once, and/or specify
+                  multiple tests by separating them with a comma:
 
-               Globbing patterns: https://pkg.go.dev/path/filepath#Match
+                      $ toml-test toml-test-decoder \
+                          -run valid/string-empty \
+                          -run valid/string-nl,valid/string-simple
 
-    -skip      Tests to skip, this uses the same syntax as the -run flag.
+                  This will run three tests (string-empty, string-nl,
+                  string-simple).
 
-    -color     Output color; possible values:
+                  Quote glob characters so they won't be picked up by the shell.
+                  Supported paterns: https://godocs.io/path/filepath#Match
 
-                    always   Show test failures in bold and red (default).
-                    bold     Show test failures in bold only.
-                    never    Never output any escape codes.
+    -skip         Tests to skip, this uses the same syntax as the -run flag.
 
-    -testdir   Location of the tests; the default is to use the tests compiled
-               in the binary; this is only useful if you want to add or modify
-               tests.
+    -color        Output color; possible values:
 
-               A test in the invalid directory is a toml file that is known to
-               be invalid and should be rejected by the parser.
+                       always   Show test failures in bold and red.
+                       bold     Show test failures in bold only.
+                       never    Never output any escape codes.
 
-               A test in the valid directory is a toml and json file with the
-               same name, where the json file is the JSON representation of the
-               TOML file according to the syntax described in the README.
+                  Default is "always", or "never" if NO_COLOR is set.
 
-               For encoders, the same directory scheme above is used, except
-               the invalid-encoder directory is used instead of the invalid
-               directory.
+    -testdir      Location of the tests; the default is to use the tests
+                  compiled in the binary; this is only useful if you want to add
+                  or modify tests.
+
+                  A test in the invalid directory is a TOML file that is known
+                  to be invalid and should be rejected by the parser.
+
+                  A test in the valid directory is a TOML and JSON file with the
+                  same name, where the json file is the JSON representation of
+                  the TOML file according to the syntax described in the README.
+
+                  For encoders only valid tests are run.
 `
