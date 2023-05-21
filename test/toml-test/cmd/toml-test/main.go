@@ -5,35 +5,36 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	tomltest "github.com/BurntSushi/toml-test"
 	"zgo.at/zli"
 )
 
-var hlErr = zli.ColorHex("#f6d6d6").Bg() | zli.Black | zli.Bold
+var hlErr = zli.Color256(224).Bg() | zli.Color256(0) | zli.Bold
 
-var version = "git"
-
-func parseFlags() (tomltest.Runner, []string, int, string) {
+func parseFlags() (tomltest.Runner, []string, int, string, bool) {
 	f := zli.NewFlags(os.Args)
 	var (
 		help        = f.Bool(false, "help", "h")
-		versionFlag = f.Bool(false, "version", "V")
+		versionFlag = f.IntCounter(0, "version", "V")
+		tomlVersion = f.String("1.0.0", "toml")
 		encoder     = f.Bool(false, "encoder")
 		testDir     = f.String("", "testdir")
 		showAll     = f.IntCounter(0, "v")
 		color       = f.String("always", "color")
 		skip        = f.StringList(nil, "skip")
 		run         = f.StringList(nil, "run")
+		listFiles   = f.Bool(false, "list-files")
 	)
 	zli.F(f.Parse())
 	if help.Bool() {
 		fmt.Printf(usage, filepath.Base(os.Args[0]))
 		zli.Exit(0)
 	}
-	if versionFlag.Bool() {
-		fmt.Println(version)
+	if versionFlag.Int() > 0 {
+		zli.PrintVersion(versionFlag.Int() > 1)
 		zli.Exit(0)
 	}
 
@@ -41,9 +42,10 @@ func parseFlags() (tomltest.Runner, []string, int, string) {
 		Encoder:   encoder.Bool(),
 		RunTests:  run.StringsSplit(","),
 		SkipTests: skip.StringsSplit(","),
+		Version:   tomlVersion.String(),
 	}
 
-	if len(f.Args) == 0 {
+	if len(f.Args) == 0 && !listFiles.Bool() {
 		zli.Fatalf("no parser command")
 	}
 	for _, r := range r.RunTests {
@@ -88,23 +90,41 @@ func parseFlags() (tomltest.Runner, []string, int, string) {
 
 	r.Parser = tomltest.NewCommandParser(r.Files, f.Args)
 
-	switch color.String() {
-	case "always", "yes":
-		zli.WantColor = true
-	case "never", "no":
-		zli.WantColor = false
-	case "bold", "monochrome":
-		zli.WantColor = true
-		hlErr = zli.Bold
-	default:
-		zli.Fatalf("invalid value for -color: %q", color)
+	_, ok := os.LookupEnv("NO_COLOR")
+	zli.WantColor = !ok
+	if color.Set() {
+		switch color.String() {
+		case "always", "yes":
+			zli.WantColor = true
+		case "never", "no":
+			zli.WantColor = false
+		case "bold", "monochrome":
+			zli.WantColor = true
+			hlErr = zli.Bold
+		default:
+			zli.Fatalf("invalid value for -color: %q", color)
+		}
 	}
 
-	return r, f.Args, showAll.Int(), testDir.String()
+	return r, f.Args, showAll.Int(), testDir.String(), listFiles.Bool()
 }
 
 func main() {
-	runner, cmd, showAll, testDir := parseFlags()
+	runner, cmd, showAll, testDir, listFiles := parseFlags()
+
+	if listFiles {
+		l, err := runner.List()
+		zli.F(err)
+
+		sort.Strings(l)
+		for _, ll := range l {
+			if strings.HasPrefix(ll, "valid/") {
+				fmt.Println(ll + ".json")
+			}
+			fmt.Println(ll + ".toml")
+		}
+		return
+	}
 
 	tests, err := runner.Run()
 	zli.F(err)
