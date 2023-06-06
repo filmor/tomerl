@@ -46,7 +46,7 @@ HOUR = ([01][0-9]|2[0-3])
 MIN  = ([0-5][0-9])
 SEC  = ([0-5][0-9]|60)
 DATE = {YEAR}-{MONTH}-{DAY}
-TIME = {HOUR}:{MIN}:{SEC}(\.[0-9]+)?
+TIME = {HOUR}:{MIN}(:{SEC}(\.[0-9]+)?)?
 TZOFFSET = ([zZ]|[+-]{HOUR}:{MIN})
 DTSEP = [tT\s]
 
@@ -198,7 +198,10 @@ local_date(String) ->
   ).
 
 local_time(String) ->
-  [HH, MM, SS] = string:tokens(String, ":"),
+  [HH, MM, SS] = case string:tokens(String, ":") of
+    [H0, M0, S0] -> [H0, M0, S0];
+    [H0, M0] -> [H0, M0, "00"]
+  end,
   case string:tokens(SS, ".") of
     [_] ->
       tomerl_datetime:new_time(
