@@ -4,20 +4,22 @@ SP = [\s\t]
 COMMENT = #[^\x00-\x1f\x7f]*
 
 HEX = [0-9a-fA-F]
-HEX4 = {HEX}{HEX}{HEX}{HEX}
-HEX8 = {HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}{HEX}
+HEX2 = {HEX}{HEX}
+HEX4 = {HEX2}{HEX2}
+HEX8 = {HEX4}{HEX4}
 % All control characters but the literal tab are forbidden
 CHAR = [^\\"\x00-\x1f\x7f]|\t
-ESC_CHAR = \\[btnfr"\\]
+ESC_CHAR = \\[btnfre"\\]
+H = \\x{HEX}{HEX}
 U4 = \\u{HEX4}
 U8 = \\U{HEX8}
 
 BARE_KEY = [a-zA-Z0-9_\-\xb2\xb3\xb9\xbc-\xbe\xc0-\xd6\xd8-\xf6\xf8-\x{37d}\x{37f}-\x{1fff}\x{200c}-\x{200d}\x{203f}-\x{2040}\x{2070}-\x{218f}\x{2460}-\x{24ff}\x{2c00}-\x{2fef}\x{3001}-\x{d7ff}\x{f900}-\x{fdcf}\x{fdf0}-\x{fffd}\x{10000}-\x{effff}]+
 LITERAL_STRING = '[^\'\x00-\x1f\x7f]*'
-BASIC_STRING = "({CHAR}|{ESC_CHAR}|{U4}|{U8})*"
-BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*"""
-BASIC_STRING_ML_1 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*""""
-BASIC_STRING_ML_2 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{U4}|{U8}))*"""""
+BASIC_STRING = "({CHAR}|{ESC_CHAR}|{H}|{U4}|{U8})*"
+BASIC_STRING_ML = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{H}|{U4}|{U8}))*"""
+BASIC_STRING_ML_1 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{H}|{U4}|{U8}))*""""
+BASIC_STRING_ML_2 = """("?"?({CHAR}|\r?\n|\\{SP}*\r?\n|{ESC_CHAR}|{H}|{U4}|{U8}))*"""""
 % 0x00 - 0x1f and 0x7f are always forbidden, but here we need to allow \n=\x0a and \t=\x09
 LITERAL_STRING_ML = '''('?'?[^'\x00-\x08\x0b-\x1f\x7f])*'''
 LITERAL_STRING_ML_1 = '''(('?'?[^'\x00-\x08\x0b-\x1f\x7f])*')'''
@@ -246,8 +248,11 @@ esc_codes("\\t"  ++ Rest) -> [$\t | esc_codes(Rest)];
 esc_codes("\\n"  ++ Rest) -> [$\n | esc_codes(Rest)];
 esc_codes("\\f"  ++ Rest) -> [$\f | esc_codes(Rest)];
 esc_codes("\\r"  ++ Rest) -> [$\r | esc_codes(Rest)];
+esc_codes("\\e"  ++ Rest) -> [$\e | esc_codes(Rest)];
 esc_codes("\\\"" ++ Rest) -> [$\" | esc_codes(Rest)];
 esc_codes("\\\\" ++ Rest) -> [$\\ | esc_codes(Rest)];
+esc_codes("\\x"   ++ [C1, C2 | Rest]) ->
+  [u([C2, C1]) | esc_codes(Rest)];
 esc_codes("\\u"  ++ [C1, C2, C3, C4 | Rest]) ->
   [u([C4, C3, C2, C1]) | esc_codes(Rest)];
 esc_codes("\\U"  ++ [C1, C2, C3, C4, C5, C6, C7, C8 | Rest]) ->
