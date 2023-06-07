@@ -52,6 +52,10 @@ reformat_json(JsonData) when is_map(JsonData) ->
         {ok, <<"float">>} ->
             % Parse float and reformat
             case maps:get(<<"value">>, JsonData) of
+                <<"+Inf">> ->
+                    value(float, "inf");
+                <<"-Inf">> ->
+                    value(float, "-inf");
                 <<"+inf">> ->
                     value(float, "inf");
                 E when E =:= <<"nan">>; E =:= <<"inf">>; E =:= <<"-inf">> ->

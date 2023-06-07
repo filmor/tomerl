@@ -1,7 +1,7 @@
 {
   "flt1": {
     "type": "float",
-    "value": "1"
+    "value": "1.0"
   },
   "flt2": {
     "type": "float",
@@ -13,11 +13,11 @@
   },
   "flt4": {
     "type": "float",
-    "value": "5e+22"
+    "value": "5.0e+22"
   },
   "flt5": {
     "type": "float",
-    "value": "1e+06"
+    "value": "1.0e+06"
   },
   "flt6": {
     "type": "float",
