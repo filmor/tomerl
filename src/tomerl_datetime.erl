@@ -202,8 +202,10 @@ fractional(#time_frac{fractional = Frac, exponent = Exp}) ->
 format(#time{hour = H, minute = M, second = S}) ->
     io_lib:format("~2..0B:~2..0B:~2..0B", [H, M, S]);
 format(#time_frac{hour = H, minute = M, second = S, fractional = Frac, exponent = Exp}) ->
-    Format = ("~2..0B:~2..0B:~2..0B.~" ++ integer_to_list(Exp) ++ "..0B"),
-    io_lib:format(Format, [H, M, S, Frac]);
+    Exp1 = max(3, Exp),
+    Frac1 = round(Frac * math:pow(10, Exp1 - Exp)),
+    Format = ("~2..0B:~2..0B:~2..0B.~" ++ integer_to_list(Exp1) ++ "..0B"),
+    io_lib:format(Format, [H, M, S, Frac1]);
 format(#date{year = Y, month = M, day = D}) ->
     io_lib:format("~4..0B-~2..0B-~2..0B", [Y, M, D]);
 format(#datetime{date = Date, time = Time}) ->
