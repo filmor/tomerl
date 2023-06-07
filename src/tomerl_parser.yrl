@@ -4,7 +4,7 @@ Nonterminals
   section section_name section_body
   key key_component value key_value
   array value_list nls maybe_space
-  inline_table inline_kv_list
+  inline_table inline_kv_list maybe_comma
 .
 
 Terminals
@@ -100,14 +100,18 @@ nls -> nls nl.
 maybe_space -> '$empty'.
 maybe_space -> space.
 
+maybe_comma -> '$empty'.
+maybe_comma -> ','.
+
 %%----------------------------------------------------------
 
-inline_table -> '{' '}' : {#{}, line('$1')}.
-inline_table -> '{' inline_kv_list '}' : {'$2', line('$1')}.
+inline_table -> '{' nls '}' : {#{}, line('$1')}.
+inline_table -> '{' nls inline_kv_list nls '}' : {'$3', line('$1')}.
+inline_table -> '{' nls inline_kv_list ',' nls'}' : {'$3', line('$1')}.
 
 % NOTE: as per spec and reference grammar, trailing comma is not allowed
 inline_kv_list -> key_value : to_map('$1', #{}).
-inline_kv_list -> inline_kv_list ',' key_value : to_map('$3', '$1').
+inline_kv_list -> inline_kv_list ',' nls key_value : to_map('$4', '$1').
 
 %%----------------------------------------------------------
 
