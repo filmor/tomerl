@@ -4,7 +4,7 @@ Nonterminals
   section section_name section_body
   key key_component value key_value
   array value_list nls maybe_space
-  inline_table inline_kv_list maybe_comma
+  inline_table inline_kv_list
 .
 
 Terminals
@@ -45,9 +45,9 @@ section_name -> key : '$1'.
 % section_name -> section_name '.' key : ['$3' | '$1'].
 
 section_body -> nl : #{}.
-section_body -> key_value nl : to_map('$1', #{}).
+section_body -> key_value nl : tomerl_parser_util:to_map('$1', #{}).
 section_body -> section_body nl : '$1'.
-section_body -> section_body key_value nl : to_map('$2', '$1').
+section_body -> section_body key_value nl : tomerl_parser_util:to_map('$2', '$1').
 
 %%----------------------------------------------------------
 
@@ -100,18 +100,14 @@ nls -> nls nl.
 maybe_space -> '$empty'.
 maybe_space -> space.
 
-maybe_comma -> '$empty'.
-maybe_comma -> ','.
-
 %%----------------------------------------------------------
 
 inline_table -> '{' nls '}' : {#{}, line('$1')}.
 inline_table -> '{' nls inline_kv_list nls '}' : {'$3', line('$1')}.
 inline_table -> '{' nls inline_kv_list ',' nls'}' : {'$3', line('$1')}.
 
-% NOTE: as per spec and reference grammar, trailing comma is not allowed
-inline_kv_list -> key_value : to_map('$1', #{}).
-inline_kv_list -> inline_kv_list ',' nls key_value : to_map('$4', '$1').
+inline_kv_list -> key_value : tomerl_parser_util:to_map('$1', #{}).
+inline_kv_list -> inline_kv_list ',' nls key_value : tomerl_parser_util:to_map('$4', '$1').
 
 %%----------------------------------------------------------
 
@@ -124,24 +120,22 @@ Erlang code.
     parse_and_scan/1
 ]).
 
+line({_, Line}) ->
+  Line;
+line({_, Line, _}) ->
+  Line.
+
 value({maybe_key, Line, {_Type, _RawValue, ParsedValue}}) ->
   {ParsedValue, Line};
 
 value({_TermName, Line, Value}) ->
   {Value, Line}.
 
--spec line({_, pos_integer(), _}) -> pos_integer();
-          ({_, pos_integer()}) -> pos_integer().
-line({_, Line, _}) ->
-  Line;
-line({_, Line}) ->
-  Line.
-
 -spec string_value(_) -> {binary(), pos_integer()}.
 string_value({maybe_key, Line, {_Type, RawValue, _}}) ->
-  {to_binary(RawValue), Line};
+  {tomerl_parser_util:to_binary(RawValue), Line};
 string_value({_, Line, Val}) ->
-  {to_binary(Val), Line}.
+  {tomerl_parser_util:to_binary(Val), Line}.
 
 -spec key_string_values(_) -> [binary()].
 key_string_values({maybe_key, _, _} = Token) ->
@@ -151,31 +145,6 @@ key_string_values({maybe_key, _, _} = Token) ->
 key_string_values(Token) ->
   {Str, _} = string_value(Token),
   [Str].
-
--spec to_map({key_value, [binary()], {_, _}}, #{ binary() => _ }) -> #{ binary() => _ }.
-to_map({key_value, [H], {Value, _Line}}, Map) ->
-  case maps:is_key(H, Map) of
-    true ->
-      % TODO: Show line number in error
-      error(overwritten);
-    _ ->
-      Map#{ H => Value }
-  end;
-to_map({key_value, [H|T], Value}, Map) ->
-  Map#{ H => to_map({key_value, T, Value}, maps:get(H, Map, #{})) }.
-
-
-to_binary(Atom) when is_atom(Atom) ->
-  atom_to_binary(Atom);
-
-to_binary(List) ->
-  case unicode:characters_to_binary(List) of
-    {error, _Parsed, _RestData} ->
-      % TODO: Show line number in error
-      error(invalid_string);
-    Res when is_binary(Res) ->
-      Res
-  end.
 
 %%%---------------------------------------------------------------------------
 %%% vim:ft=erlang
