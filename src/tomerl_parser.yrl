@@ -35,19 +35,19 @@ section_list -> section_list section : ['$2' | '$1'].
 section -> maybe_space '[' section_name maybe_space ']' nl :
   [{table, line('$2'), '$3', #{}}].
 section -> maybe_space '[' section_name maybe_space ']' nl section_body :
-  [{table, line('$2'), '$3', '$7'}].
+  [{table, line('$2'), '$3', tomerl_parser_util:section_to_map('$7')}].
 section -> maybe_space '[' '[' section_name maybe_space ']' ']' nl :
   [{array_table, line('$2'), '$4', #{}}].
 section -> maybe_space '[' '[' section_name maybe_space ']' ']' nl section_body :
-  [{array_table, line('$2'), '$4', '$9'}].
+  [{array_table, line('$2'), '$4', tomerl_parser_util:section_to_map('$9')}].
 
 section_name -> key : '$1'.
 % section_name -> section_name '.' key : ['$3' | '$1'].
 
 section_body -> nl : #{}.
-section_body -> key_value nl : tomerl_parser_util:to_map('$1', #{}).
+section_body -> key_value nl : tomerl_parser_util:new_section('$1').
 section_body -> section_body nl : '$1'.
-section_body -> section_body key_value nl : tomerl_parser_util:to_map('$2', '$1').
+section_body -> section_body key_value nl : tomerl_parser_util:update_section('$2', '$1').
 
 %%----------------------------------------------------------
 
@@ -103,11 +103,14 @@ maybe_space -> space.
 %%----------------------------------------------------------
 
 inline_table -> '{' nls '}' : {#{}, line('$1')}.
-inline_table -> '{' nls inline_kv_list nls '}' : {'$3', line('$1')}.
-inline_table -> '{' nls inline_kv_list ',' nls'}' : {'$3', line('$1')}.
+inline_table -> '{' nls inline_kv_list nls '}' :
+    {tomerl_parser_util:section_to_map('$3'), line('$1')}.
+inline_table -> '{' nls inline_kv_list ',' nls'}' :
+    {tomerl_parser_util:section_to_map('$3'), line('$1')}.
 
-inline_kv_list -> key_value : tomerl_parser_util:to_map('$1', #{}).
-inline_kv_list -> inline_kv_list ',' nls key_value : tomerl_parser_util:to_map('$4', '$1').
+inline_kv_list -> key_value : tomerl_parser_util:new_section('$1').
+inline_kv_list -> inline_kv_list ',' nls key_value :
+    tomerl_parser_util:update_section('$4', '$1').
 
 %%----------------------------------------------------------
 
