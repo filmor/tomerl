@@ -1,3 +1,5 @@
+%%% @hidden
+
 -module(tomerl_convert).
 
 -export([
@@ -21,11 +23,7 @@
 -spec do(ast()) -> {ok, tomerl:section()} | {error, _}.
 do(Ast) ->
     try
-        State = lists:foldl(
-            fun do/2,
-            #state{},
-            Ast
-        ),
+        State = lists:foldl(fun do/2, #state{}, Ast),
 
         {ok, reverse_lists(State#state.result)}
     catch
